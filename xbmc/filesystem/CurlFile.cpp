@@ -1232,10 +1232,6 @@ bool CCurlFile::CReadState::FillBuffer(unsigned int want)
     {
       if (result == CURLM_OK)
       {
-        /* if we still have stuff in buffer, we are fine */
-        if (m_buffer.getMaxReadSize())
-          return true;
-
         /* verify that we are actually okey */
         int msgs;
         CURLcode CURLresult = CURLE_OK;
@@ -1256,14 +1252,12 @@ bool CCurlFile::CReadState::FillBuffer(unsigned int want)
                   msg->data.result == CURLE_RECV_ERROR)        &&
                   !m_bFirstLoop)
               CURLresult = msg->data.result;
-            else
-              return false;
           }
         }
 
         // Don't retry when we didn't "see" any error
         if (CURLresult == CURLE_OK)
-          return false;
+          return m_buffer.getMaxReadSize(); // if we still have stuff in buffer, we are fine (for now)
 
         // Close handle
         if (m_multiHandle && m_easyHandle)
