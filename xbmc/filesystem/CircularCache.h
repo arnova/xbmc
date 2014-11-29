@@ -50,12 +50,18 @@ public:
 
     virtual CCacheStrategy *CreateNew();
 protected:
-    int64_t           m_beg;       /**< index in file (not buffer) of beginning of valid data */
-    int64_t           m_end;       /**< index in file (not buffer) of end of valid data */
-    int64_t           m_cur;       /**< current reading index in file */
-    uint8_t          *m_buf;       /**< buffer holding data */
-    size_t            m_size;      /**< size of data buffer used (m_buf) */
-    size_t            m_size_back; /**< guaranteed size of back buffer (actual size can be smaller, or larger if front buffer doesn't need it) */
+    int64_t           m_beg1;         /**< index in file (not buffer) of beginning of valid data */
+    int64_t           m_end1;         /**< index in file (not buffer) of end of valid data */
+    unsigned          m_time1;        /**< The last timestamp this cache was used */
+    int64_t           m_beg2;         /**< index in file (not buffer) of beginning of valid data */
+    int64_t           m_end2;         /**< index in file (not buffer) of end of valid data */
+    unsigned          m_time2;        /**< The last timestamp this cache was used */
+    int64_t           m_cur;          /**< current reading index in file */
+    size_t            m_border;       /**< absolute position in the cache where cache 1 starts (and cache 2 ends m_border - 1) */
+    uint8_t          *m_buf;          /**< buffer holding data */
+    size_t            m_size;         /**< size of data buffer used (m_buf) */
+    size_t            m_size_back;    /**< guaranteed size of back buffer (actual size can be smaller, or larger if front buffer doesn't need it) */
+    bool              m_double_cache;
     CCriticalSection  m_sync;
     CEvent            m_written;
 #ifdef TARGET_WINDOWS

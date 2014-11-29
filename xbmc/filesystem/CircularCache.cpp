@@ -25,16 +25,24 @@
 #include "utils/TimeUtils.h"
 #include "CircularCache.h"
 
+#define MAX_CACHE_AGE 10000 // 10 seconds
+
 using namespace XFILE;
 
 CCircularCache::CCircularCache(size_t front, size_t back, bool bDoubleCache)
  : CCacheStrategy()
- , m_beg(0)
- , m_end(0)
+ , m_beg1(0)
+ , m_end1(0)
+ , m_time1(0)
+ , m_beg2(-1)
+ , m_end2(-1)
+ , m_time2(0)
  , m_cur(0)
+ , m_border(0)
  , m_buf(NULL)
  , m_size(front + back)
  , m_size_back(back)
+ , m_double_cache(bDoubleCache)
 #ifdef TARGET_WINDOWS
  , m_handle(INVALID_HANDLE_VALUE)
 #endif
@@ -58,9 +66,12 @@ int CCircularCache::Open()
 #endif
   if(m_buf == 0)
     return CACHE_RC_ERROR;
-  m_beg = 0;
-  m_end = 0;
-  m_cur = 0;
+  m_beg1 = 0;
+  m_end1 = 0;
+  m_beg2 = -1;
+  m_end2 = -1;
+  m_cur  = 0;
+  m_border  = 0;
   return CACHE_RC_OK;
 }
 
@@ -80,9 +91,38 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
 {
   CSingleLock lock(m_sync);
 
-  size_t back  = (size_t)(m_cur - m_beg); // Backbuffer size
-  size_t front = (size_t)(m_end - m_cur); // Frontbuffer size
-  size_t limit = m_size - std::min(back, m_size_back) - front;
+  size_t back1  = (size_t)(m_cur - m_beg1); // Backbuffer size
+  size_t front1 = (size_t)(m_end1 - m_cur); // Frontbuffer size
+  size_t back2  = (size_t)(m_cur - m_beg2); // Backbuffer size
+  size_t front2 = (size_t)(m_end2 - m_cur); // Frontbuffer size
+
+  size_t limit;
+  if (m_cur >= m_beg1 && m_cur <= m_end1)
+  {
+    limit = m_size - std::min(back1, m_size_back) - front1; // FIXME: back size calc
+
+    if (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis())
+    {
+      limit += front2;
+    }
+    else if (front2 > front1)
+    {
+      limit += ((front2 - front1) / 2);
+    }
+  }
+  else
+  {
+    limit = m_size - std::min(back2, m_size_back) - front2; // FIXME: back size calc
+
+    if (m_time1 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis())
+    {
+      limit += front1;
+    }
+    else if (front1 > front2)
+    {
+      limit += ((front1 - front2) / 2);
+    }
+  }
 
   // Never return more than limit and size requested by caller
   return std::min(iRequestSize, limit);
@@ -102,7 +142,7 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
  * until only m_size_back data remains.
  *
  * The following always apply:
- *  * m_end <= m_cur <= m_end
+ *  * m_beg <= m_cur <= m_end
  *  * m_end - m_beg <= m_size
  *
  * Multiple calls may be needed to fill buffer completely.
@@ -112,9 +152,23 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   CSingleLock lock(m_sync);
 
   // where are we in the buffer
-  size_t pos   = m_end % m_size;
-  size_t back  = (size_t)(m_cur - m_beg);
-  size_t front = (size_t)(m_end - m_cur);
+  size_t back;
+  size_t front;
+  size_t pos;
+  if (m_cur >= m_beg1 && m_cur <= m_end1)
+  {
+    back  = (size_t)(m_cur - m_beg1);
+    front = (size_t)(m_end1 - m_cur);
+    pos   = (m_border + back + front) % m_size;
+  }
+  else
+  {
+    back  = (size_t)(m_cur - m_beg2);
+    front = (size_t)(m_end2 - m_cur);
+    pos   = (m_border - 1);
+  }
+
+  // FIXME: figure out size/age of the "other" cache and use that if old
 
   size_t limit = m_size - std::min(back, m_size_back) - front;
   size_t wrap  = m_size - pos;
@@ -126,17 +180,30 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   // limit to wrap point
   if(len > wrap)
     len = wrap;
+    
+  // FIXME: Limit by m_border depending on age and update other cache m_beg
 
   if(len == 0)
     return 0;
 
   // write the data
   memcpy(m_buf + pos, buf, len);
-  m_end += len;
+  if (m_cur >= m_beg1 && m_cur <= m_end1)
+  {
+    m_end1 += len; // FIXME
 
-  // drop history that was overwritten
-  if(m_end - m_beg > (int64_t)m_size)
-    m_beg = m_end - m_size;
+    // drop history that was overwritten
+    if(m_end1 - m_beg1 > (int64_t)m_size) // FIXME
+      m_beg1 = m_end1 - m_size;
+  }
+  else
+  {
+    m_end2 += len;
+
+    // drop history that was overwritten
+    if(m_end1 - m_beg1 > (int64_t)m_size) // FIXME
+      m_beg1 = m_end1 - m_size;
+  }
 
   m_written.Set();
 
@@ -152,8 +219,22 @@ int CCircularCache::ReadFromCache(char *buf, size_t len)
 {
   CSingleLock lock(m_sync);
 
-  size_t pos   = m_cur % m_size;
-  size_t front = (size_t)(m_end - m_cur);
+  size_t pos;
+  size_t front;
+
+  if (m_cur >= m_beg1 && m_cur <= m_end1)
+  {
+    pos     = (m_border + (m_cur - m_beg1)) % m_size;
+    front   = (size_t)(m_end1 - m_cur);
+    m_time1 = XbmcThreads::SystemClockMillis(); // Update last used time
+  }
+  else
+  {
+    pos     = (m_border - 1 - (m_end2 - m_cur)) % m_size;
+    front   = (size_t)(m_end2 - m_cur);
+    m_time2 = XbmcThreads::SystemClockMillis(); // Update last used time
+  }
+
   size_t avail = std::min(m_size - pos, front);
 
   if(avail == 0)
@@ -185,13 +266,18 @@ int CCircularCache::ReadFromCache(char *buf, size_t len)
 int64_t CCircularCache::WaitForData(unsigned int minimum, unsigned int millis)
 {
   CSingleLock lock(m_sync);
-  int64_t avail = m_end - m_cur;
 
-  if(millis == 0 || IsEndOfInput())
-    return avail;
+  int64_t avail;
+  if (m_cur >= m_beg1 && m_cur <= m_end1)
+    avail = m_end1 - m_cur;
+  else
+    avail = m_end2 - m_cur;
 
-  if(minimum > m_size - m_size_back)
-    minimum = m_size - m_size_back;
+  if (millis == 0 || IsEndOfInput())
+    return avail; // FIXME?
+
+  if (minimum > (m_size - m_size_back) / 2) // Take into account 2 active sub caches
+    minimum = (m_size - m_size_back) / 2;
 
   XbmcThreads::EndTime endtime(millis);
   while (!IsEndOfInput() && avail < minimum && !endtime.IsTimePast() )
@@ -199,7 +285,11 @@ int64_t CCircularCache::WaitForData(unsigned int minimum, unsigned int millis)
     lock.Leave();
     m_written.WaitMSec(50); // may miss the deadline. shouldn't be a problem.
     lock.Enter();
-    avail = m_end - m_cur;
+
+    if (m_cur >= m_beg1 && m_cur <= m_end1)
+      avail = m_end1 - m_cur;
+    else
+      avail = m_end2 - m_cur;
   }
 
   return avail;
@@ -211,19 +301,30 @@ int64_t CCircularCache::Seek(int64_t pos)
 
   // if seek is a bit over what we have, try to wait a few seconds for the data to be available.
   // we try to avoid a (heavy) seek on the source
-  if (pos >= m_end && pos < m_end + 100000)
+  if (pos >= m_end1 && pos < m_end1 + 100000)
   {
     /* Make everything in the cache (back & forward) back-cache, to make sure
      * there's sufficient forward space. Increasing it with only 100000 may not be
      * sufficient due to variable filesystem chunksize
      */
-    m_cur = m_end;
+    m_cur = m_end1;
+    lock.Leave();
+    WaitForData((size_t)(pos - m_cur), 5000);
+    lock.Enter();
+  }
+  else if (pos >= m_end2 && pos < m_end2 + 100000)
+  {
+    /* Make everything in the cache (back & forward) back-cache, to make sure
+     * there's sufficient forward space. Increasing it with only 100000 may not be
+     * sufficient due to variable filesystem chunksize
+     */
+    m_cur = m_end2;
     lock.Leave();
     WaitForData((size_t)(pos - m_cur), 5000);
     lock.Enter();
   }
 
-  if(pos >= m_beg && pos <= m_end)
+  if ((pos >= m_beg1 && pos <= m_end1) || (pos >= m_beg2 && pos <= m_end2))
   {
     m_cur = pos;
     return pos;
@@ -240,30 +341,48 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
     m_cur = pos;
     return;
   }
-  m_end = pos;
-  m_beg = pos;
+
+  if (m_cur >= m_beg1 && m_cur <= m_end1)
+  {
+    // Switch to cache 2
+    m_end2 = pos;
+    m_beg2 = pos;
+  }
+  else
+  {
+    // Switch to cache 1
+    m_end1 = pos;
+    m_beg1 = pos;
+  }
+
   m_cur = pos;
 }
 
 int64_t CCircularCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
 {
-  if (IsCachedPosition(iFilePosition))
-    return m_end;
+  if (iFilePosition >= m_beg1 && iFilePosition <= m_end1)
+    return m_end1;
+
+  if (iFilePosition >= m_beg2 && iFilePosition <= m_end2)
+    return m_end2;
+
   return iFilePosition;
 }
 
 int64_t CCircularCache::CachedDataEndPos()
 {
-  return m_end;
+  if (m_cur >= m_beg1 && m_cur <= m_end1)
+    return m_end1;
+  else
+    return m_end2;
 }
 
 bool CCircularCache::IsCachedPosition(int64_t iFilePosition)
 {
-  return iFilePosition >= m_beg && iFilePosition <= m_end;
+  return ((iFilePosition >= m_beg1 && iFilePosition <= m_end1) || (iFilePosition >= m_beg2 && iFilePosition <= m_end2));
 }
 
 CCacheStrategy *CCircularCache::CreateNew()
 {
-  return new CCircularCache(m_size - m_size_back, m_size_back);
+  return new CCircularCache(m_size - m_size_back, m_size_back, false);
 }
-
