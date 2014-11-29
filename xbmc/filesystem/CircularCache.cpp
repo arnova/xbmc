@@ -27,7 +27,7 @@
 
 using namespace XFILE;
 
-CCircularCache::CCircularCache(size_t front, size_t back)
+CCircularCache::CCircularCache(size_t front, size_t back, bool bDoubleCache)
  : CCacheStrategy()
  , m_beg(0)
  , m_end(0)

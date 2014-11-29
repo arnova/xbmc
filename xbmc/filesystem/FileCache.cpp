@@ -86,21 +86,18 @@ CFileCache::CFileCache(bool useDoubleCache) : CThread("FileCache")
    m_readPos = 0;
    m_writePos = 0;
    if (g_advancedSettings.m_cacheMemBufferSize == 0)
+   {
      m_pCache = new CSimpleFileCache();
+     if (useDoubleCache)
+     {
+       m_pCache = new CDoubleCache(m_pCache);
+     }
+   }
    else
    {
      size_t front = g_advancedSettings.m_cacheMemBufferSize;
      size_t back = std::max<size_t>( g_advancedSettings.m_cacheMemBufferSize / 4, 1024 * 1024);
-     if (useDoubleCache)
-     {
-       front = front / 2;
-       back = back / 2;
-     }
-     m_pCache = new CCircularCache(front, back);
-   }
-   if (useDoubleCache)
-   {
-     m_pCache = new CDoubleCache(m_pCache);
+     m_pCache = new CCircularCache(front, back, useDoubleCache);
    }
    m_seekPossible = 0;
    m_cacheFull = false;

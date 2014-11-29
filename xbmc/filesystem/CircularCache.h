@@ -30,7 +30,7 @@ namespace XFILE {
 class CCircularCache : public CCacheStrategy
 {
 public:
-    CCircularCache(size_t front, size_t back);
+    CCircularCache(size_t front, size_t back, bool bDoubleCache);
     virtual ~CCircularCache();
 
     virtual int Open() ;
