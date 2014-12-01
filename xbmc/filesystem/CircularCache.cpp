@@ -38,7 +38,7 @@ CCircularCache::CCircularCache(size_t front, size_t back, bool bDoubleCache)
  , m_beg2(-1)
  , m_end2(-1)
  , m_time2(0)
- , m_start2(bDoubleCache ? (m_size / 2) : -1)
+ , m_start2(m_size / 2)
  , m_cur(0)
  , m_buf(NULL)
  , m_size(front + back)
@@ -72,7 +72,7 @@ int CCircularCache::Open()
   m_start1 = 0;
   m_beg2 = -1;
   m_end2 = -1;
-  m_start2 = (m_double_cache ? (m_size / 2) : -1);
+  m_start2 = (m_size / 2);
   m_cur  = 0;
   return CACHE_RC_OK;
 }
@@ -93,14 +93,20 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
 {
   CSingleLock lock(m_sync);
 
-  size_t back1  = (size_t)(m_cur - m_beg1); // Backbuffer size
-  size_t front1 = (size_t)(m_end1 - m_cur); // Frontbuffer size
-  size_t back2  = (size_t)(m_cur - m_beg2); // Backbuffer size
-  size_t front2 = (size_t)(m_end2 - m_cur); // Frontbuffer size
+  size_t back;
+  size_t front;
+  size_t pos;
+  size_t limit;
+  const size_t size1 = (size_t) (m_end1 - m_beg1);
+  const size_t size2 = (size_t) (m_end2 - m_beg2);
 
   size_t limit;
   if (m_cur >= m_beg1 && m_cur <= m_end1)
   {
+    back  = (size_t)(m_cur - m_beg1);
+    front = (size_t)(m_end1 - m_cur);
+    pos   = (m_start + back + front) % m_size;
+
     limit = m_size - std::min(back1, m_size_back) - front1; // FIXME: back size calc
 
     if ((m_time2 == 0) || (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
@@ -114,6 +120,10 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
   }
   else
   {
+    back  = (size_t)(m_cur - m_beg2);
+    front = (size_t)(m_end2 - m_cur);
+    pos   = (m_start2 + back2 + front2) % m_size;
+
     limit = m_size - std::min(back2, m_size_back) - front2; // FIXME: back size calc
 
     if ((m_time1 == 0) || (m_time1 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
@@ -154,44 +164,47 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   CSingleLock lock(m_sync);
 
   // where are we in the buffer
-  size_t back1;
-  size_t front1;
-  size_t back2;
-  size_t front2;
+  size_t back;
+  size_t front;
   size_t pos;
   size_t limit;
+  const size_t size1 = (size_t) (m_end1 - m_beg1);
+  const size_t size2 = (size_t) (m_end2 - m_beg2);
+
   if (m_cur >= m_beg1 && m_cur <= m_end1)
   {
-    back1  = (size_t)(m_cur - m_beg1);
-    front1 = (size_t)(m_end1 - m_cur);
-    pos    = (m_start1 + back1 + front1) % m_size;
+    back  = (size_t)(m_cur - m_beg1);
+    front = (size_t)(m_end1 - m_cur);
+    pos   = (m_start1 + back + front) % m_size;
 
-    limit = m_size - std::min(back1, m_size_back) - front1; // FIXME: back size calc
+    // FIXME: Limit is wrong
 
-    if (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis())
+    if ((m_time2 == 0) || (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
     {
-      limit += front2;
+      // Other cache expired, make it available for active cache
+      limit = m_size - std::min(back, m_size_back) - front; // FIXME: back size calc?
     }
-    else if (front2 > front1)
+    else if (size2 > size1)
     {
-      limit += ((front2 - front1) / 2); // - 1 ?
+      limit += ((size2 - size1) / 2); // - 1 ?
     }
   }
   else
   {
-    back2  = (size_t)(m_cur - m_beg2);
-    front2 = (size_t)(m_end2 - m_cur);
-    pos    = (m_start2 + back2 + front2) % m_size;
+    back  = (size_t)(m_cur - m_beg2);
+    front = (size_t)(m_end2 - m_cur);
+    pos   = (m_start2 + back2 + front2) % m_size;
 
+    // FIXME: Limit is wrong
     limit = m_size - std::min(back2, m_size_back) - front2; // FIXME: back size calc
 
-    if (m_time1 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis())
+    if ((m_time1 == 0) || (m_time1 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
     {
       limit += front1;
     }
-    else if (front1 > front2)
+    else if (size1 > size2)
     {
-      limit += ((front1 - front2) / 2); // - 1 ?
+      limit += ((size1 - size2) / 2); // - 1 ?
     }
   }
 
@@ -200,6 +213,8 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   // limit by max forward size
   if(len > limit)
     len = limit;
+
+  // FIXME: Must also limit by the cache border
 
   // limit to wrap point
   if(len > wrap)
@@ -268,13 +283,13 @@ int CCircularCache::ReadFromCache(char *buf, size_t len)
 
   if (m_cur >= m_beg1 && m_cur <= m_end1)
   {
-    pos     = (m_start1 + (m_cur - m_beg1)) % m_size;
+    pos     = (m_start1 + (m_cur - m_beg1)) % m_size; // FIXME: Need to consider cache wrap point as well
     front   = (size_t)(m_end1 - m_cur);
     m_time1 = XbmcThreads::SystemClockMillis(); // Update last used time
   }
   else
   {
-    pos     = (m_start2 + (m_cur - m_beg2)) % m_size;
+    pos     = (m_start2 + (m_cur - m_beg2)) % m_size; // FIXME: Need to consider cache wrap point as well
     front   = (size_t)(m_end2 - m_cur);
     m_time2 = XbmcThreads::SystemClockMillis(); // Update last used time
   }
