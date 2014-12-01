@@ -152,26 +152,48 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   CSingleLock lock(m_sync);
 
   // where are we in the buffer
-  size_t back;
-  size_t front;
+  size_t back1;
+  size_t front1;
+  size_t back2;
+  size_t front2;
   size_t pos;
+  size_t limit;
   if (m_cur >= m_beg1 && m_cur <= m_end1)
   {
-    back  = (size_t)(m_cur - m_beg1);
-    front = (size_t)(m_end1 - m_cur);
-    pos   = (m_border + back + front) % m_size;
+    back1  = (size_t)(m_cur - m_beg1);
+    front1 = (size_t)(m_end1 - m_cur);
+    pos    = (m_border + back1 + front) % m_size;
+
+    limit = m_size - std::min(back1, m_size_back) - front1; // FIXME: back size calc
+
+    if (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis())
+    {
+      limit += front2;
+    }
+    else if (front2 > front1)
+    {
+      limit += ((front2 - front1) / 2); // - 1 ?
+    }
   }
   else
   {
-    back  = (size_t)(m_cur - m_beg2);
-    front = (size_t)(m_end2 - m_cur);
-    pos   = (m_border - 1);
+    back2  = (size_t)(m_cur - m_beg2);
+    front2 = (size_t)(m_end2 - m_cur);
+    pos    = (m_border - 1); // FIXME
+
+    limit = m_size - std::min(back2, m_size_back) - front2; // FIXME: back size calc
+
+    if (m_time1 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis())
+    {
+      limit += front1;
+    }
+    else if (front1 > front2)
+    {
+      limit += ((front1 - front2) / 2); // - 1 ?
+    }
   }
 
-  // FIXME: figure out size/age of the "other" cache and use that if old
-
-  size_t limit = m_size - std::min(back, m_size_back) - front;
-  size_t wrap  = m_size - pos;
+  const size_t wrap  = m_size - pos;
 
   // limit by max forward size
   if(len > limit)
@@ -181,8 +203,6 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   if(len > wrap)
     len = wrap;
     
-  // FIXME: Limit by m_border depending on age and update other cache m_beg
-
   if(len == 0)
     return 0;
 
@@ -190,19 +210,41 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   memcpy(m_buf + pos, buf, len);
   if (m_cur >= m_beg1 && m_cur <= m_end1)
   {
-    m_end1 += len; // FIXME
+    m_end1 += len;
 
-    // drop history that was overwritten
-    if(m_end1 - m_beg1 > (int64_t)m_size) // FIXME
+    size_t room = m_size - front2 - back2;
+
+    if (m_end1 - m_beg1 > room)
+    {
+      // drop history in other cache that was overwritten
+      size_t overwritten = (m_end1 - m_beg1) - room;
+      m_beg2 += overwritten;
+      m_border += overwritten; // % m_size; ?
+    }
+    else if (m_end1 - m_beg1 > (int64_t)m_size) // FIXME
+    {
+      // drop history that was overwritten
       m_beg1 = m_end1 - m_size;
+    }
   }
   else
   {
     m_end2 += len;
 
-    // drop history that was overwritten
-    if(m_end1 - m_beg1 > (int64_t)m_size) // FIXME
+    size_t room = m_size - front1 - back1;
+
+    if (m_end2 - m_beg2 > room)
+    {
+      // drop history in other cache that was overwritten
+      size_t overwritten = (m_end2 - m_beg2) - room;
+      m_beg1 += overwritten;
+      m_border += overwritten; // % m_size; ?
+    }
+    else if (m_end1 - m_beg1 > (int64_t)m_size) // FIXME
+    {
+      // drop history that was overwritten
       m_beg1 = m_end1 - m_size;
+    }
   }
 
   m_written.Set();
@@ -341,7 +383,8 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
     m_cur = pos;
     return;
   }
-
+  // FIXME: cache swap logic
+  
   if (m_cur >= m_beg1 && m_cur <= m_end1)
   {
     // Switch to cache 2
