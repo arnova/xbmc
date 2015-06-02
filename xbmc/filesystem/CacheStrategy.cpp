@@ -319,7 +319,20 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
 
 int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
 {
-  return m_pCache->ReadFromCache(pBuffer, iMaxSize);
+  int iRet = m_pCache->ReadFromCache(pBuffer, iMaxSize);
+
+  // Position is not in our current cache, check the other
+  if (iRet == CACHE_RC_WOULD_BLOCK && m_pCacheOld && m_pCacheOld->IsCachedPosition(iFilePosition))
+  {
+    // Force seek event so the caches are swapped
+    if m_pCache->Seek(iFilePosition) == iFilePosition)
+    {
+      // Try again with this cache
+      iRet = m_pCache->ReadFromCache(pBuffer, iMaxSize);
+    }
+  }
+
+  return iRet;
 }
 
 int64_t CDoubleCache::WaitForData(unsigned int iMinAvail, unsigned int iMillis)
