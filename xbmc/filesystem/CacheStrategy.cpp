@@ -309,7 +309,16 @@ void CDoubleCache::Close()
 
 size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
 {
-  return m_pCache->GetMaxWriteSize(iRequestSize); // NOTE: Check the active cache only
+  size_t iSize = m_pCache->GetMaxWriteSize(iRequestSize);
+
+  if (iSize != iRequestSize && m_pCacheOld && m_pCache_old->GetLastUsed() //FIXME)
+  {
+    size_t iSize2 = m_pCache->GetMaxWriteSize(iRequestSize);
+    if (iSize2 == iRequestSize)
+      return iSize2;
+  }
+
+  return iSize;
 }
 
 int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
@@ -420,4 +429,3 @@ CCacheStrategy *CDoubleCache::CreateNew()
 {
   return new CDoubleCache(m_pCache->CreateNew());
 }
-
