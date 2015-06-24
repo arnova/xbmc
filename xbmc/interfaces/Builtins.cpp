@@ -557,11 +557,13 @@ int CBuiltins::Execute(const std::string& execString)
     if (!params.empty())
     {
       std::string scriptpath(params[0]);
+      bool bSync = (params.size() > 1 && StringUtils::EqualsNoCase(params[1], "sync"));
+
       // Test to see if the param is an addon ID
       AddonPtr script;
       if (CAddonMgr::Get().GetAddon(params[0], script))
         scriptpath = script->LibPath();
-      CScriptInvocationManager::Get().Stop(scriptpath);
+      CScriptInvocationManager::Get().Stop(scriptpath, bSync);
     }
   }
   else if (execute == "system.exec")
