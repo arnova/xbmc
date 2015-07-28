@@ -258,6 +258,11 @@ int64_t CCircularCache::CachedDataEndPos()
   return m_end;
 }
 
+int64_t CCircularCache::CachedDataBeginPos()
+{
+  return m_beg;
+}
+
 bool CCircularCache::IsCachedPosition(int64_t iFilePosition)
 {
   return iFilePosition >= m_beg && iFilePosition <= m_end;
@@ -267,4 +272,3 @@ CCacheStrategy *CCircularCache::CreateNew()
 {
   return new CCircularCache(m_size - m_size_back, m_size_back);
 }
-

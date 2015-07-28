@@ -65,6 +65,7 @@ public:
 
   virtual int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition) = 0;
   virtual int64_t CachedDataEndPos() = 0;
+  virtual int64_t CachedDataBeginPos() = 0;
   virtual bool IsCachedPosition(int64_t iFilePosition) = 0;
 
   virtual CCacheStrategy *CreateNew() = 0;
@@ -95,6 +96,7 @@ public:
 
   virtual int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition);
   virtual int64_t CachedDataEndPos();
+  virtual int64_t CachedDataBeginPos();
   virtual bool IsCachedPosition(int64_t iFilePosition);
 
   virtual CCacheStrategy *CreateNew();
@@ -132,13 +134,19 @@ public:
 
   virtual int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition);
   virtual int64_t CachedDataEndPos();
+  virtual int64_t CachedDataBeginPos();
   virtual bool IsCachedPosition(int64_t iFilePosition);
 
   virtual CCacheStrategy *CreateNew();
 
 protected:
-  CCacheStrategy *m_pCache;
-  CCacheStrategy *m_pCacheOld;
+  CCacheStrategy *m_pCache1;
+  CCacheStrategy *m_pCache2;
+  CCacheStrategy *m_pWriteCache;
+  CCacheStrategy *m_pReadCache;
+
+  unsigned iLastCacheTime1;
+  unsigned iLastCacheTime2;
 };
 
 }

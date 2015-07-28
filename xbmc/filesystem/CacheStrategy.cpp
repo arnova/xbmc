@@ -37,6 +37,9 @@
 #include <cassert>
 #include <algorithm>
 
+// Define cache age before we consider its data obsolete
+#define CACHE_AGE 15000
+
 using namespace XFILE;
 
 CCacheStrategy::CCacheStrategy() : m_bEndOfInput(false)
@@ -268,6 +271,11 @@ int64_t CSimpleFileCache::CachedDataEndPos()
   return m_nStartPosition + m_nWritePosition;
 }
 
+int64_t CSimpleFileCache::CachedDataBeginPos()
+{
+  return m_nStartPosition;
+}
+
 bool CSimpleFileCache::IsCachedPosition(int64_t iFilePosition)
 {
   return iFilePosition >= m_nStartPosition && iFilePosition <= m_nStartPosition + m_nWritePosition;
@@ -282,129 +290,205 @@ CCacheStrategy *CSimpleFileCache::CreateNew()
 CDoubleCache::CDoubleCache(CCacheStrategy *impl)
 {
   assert(NULL != impl);
-  m_pCache = impl;
-  m_pCacheOld = NULL;
+  m_pCache1 = impl;
+  m_pReadCache = impl;
+  m_pWriteCache = impl;
+
+  m_pCache2 = m_pCache1->CreateNew();
 }
 
 CDoubleCache::~CDoubleCache()
 {
-  delete m_pCache;
-  delete m_pCacheOld;
+  delete m_pCache1;
+  delete m_pCache2;
+    printf("destruct\n");
 }
 
 int CDoubleCache::Open()
 {
-  return m_pCache->Open();
+  return m_pCache1->Open() && m_pCache2->Open();
 }
 
 void CDoubleCache::Close()
 {
-  m_pCache->Close();
-  if (m_pCacheOld)
-  {
-    delete m_pCacheOld;
-    m_pCacheOld = NULL;
-  }
+  printf("Close\n");
+  m_pCache1->Close();
+  m_pCache2->Close();
 }
 
 size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
 {
-  return m_pCache->GetMaxWriteSize(iRequestSize); // NOTE: Check the active cache only
+  size_t iFree = m_pWriteCache->GetMaxWriteSize(iRequestSize);
+
+  if (m_pCache1 == m_pWriteCache)
+  {
+    // Check cache1 is active, so check cache2 (age)
+    if (iLastCacheTime2 == 0 || iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+    {
+      return std::max(iFree + m_pCache2->GetMaxWriteSize(iRequestSize), iRequestSize);
+    }
+  }
+  else
+  {
+    // Check cache2 is active, so check cache1 (age)
+    if (iLastCacheTime1 == 0 || iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+    {
+      return std::max(iFree + m_pCache1->GetMaxWriteSize(iRequestSize), iRequestSize);
+    }
+
+  }
+  return iFree;
 }
 
 int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
 {
-  return m_pCache->WriteToCache(pBuffer, iSize);
+  size_t iWritten = m_pWriteCache->WriteToCache(pBuffer, iSize);
+
+  if (iWritten < iSize) // Full?
+  {
+    if (m_pCache1 == m_pWriteCache)
+    {
+      // Check cache1 is active, so check cache2 (age)
+      if (iLastCacheTime2 == 0 || iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+      {
+        m_pWriteCache = m_pCache2; // Switch to cache 2 for write
+        m_pWriteCache->Reset(m_pCache1->CachedDataEndPos() + 1);  // FIXME for EOF
+        iWritten += m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
+        iLastCacheTime2 = 0;
+      }
+    }
+    else
+    {
+      // Check cache2 is active, so check cache1 (age)
+      if (iLastCacheTime1 == 0 || iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+      {
+        m_pWriteCache = m_pCache1; // Switch to cache 1 for write
+        m_pWriteCache->Reset(m_pCache2->CachedDataEndPos() + 1);  // FIXME for EOF
+        iWritten += m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
+        iLastCacheTime1 = 0;
+      }
+    }
+  }
+  return iWritten;
 }
 
 int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
 {
-  return m_pCache->ReadFromCache(pBuffer, iMaxSize);
+  // Update timestamp for active read cache
+  if (m_pReadCache == m_pCache1)
+    iLastCacheTime1 = XbmcThreads::SystemClockMillis();
+  else
+    iLastCacheTime2 = XbmcThreads::SystemClockMillis();
+    
+  int iRead = m_pReadCache->ReadFromCache(pBuffer, iMaxSize);
+
+  if (iRead >= 0 && (size_t) iRead != iMaxSize)
+  {
+    // Switch to other cache if not data left in current read cache
+    if (m_pCache1->CachedDataEndPos() == m_pCache2->CachedDataBeginPos() + 1)
+    {
+      m_pReadCache = m_pCache2;
+      // Read remaining data (if any)
+      iRead += m_pReadCache->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
+    }
+    else if (m_pCache2->CachedDataEndPos() == m_pCache1->CachedDataBeginPos() + 1)
+    {
+      m_pReadCache = m_pCache1;
+      // Read remaining data (if any)
+      iRead += m_pReadCache->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
+    }
+  }
+  
+  return iRead;
 }
 
 int64_t CDoubleCache::WaitForData(unsigned int iMinAvail, unsigned int iMillis)
 {
-  return m_pCache->WaitForData(iMinAvail, iMillis);
+  if (iMillis == 0)
+  {
+    // Cached size requested, return total for both caches
+    return m_pCache1->WaitForData(iMinAvail, 0) + m_pCache2->WaitForData(iMinAvail, 0);
+  }
+  // FIXME: Need to check the other cache as well and not ask for more than available!
+  return m_pReadCache->WaitForData(iMinAvail, iMillis);
 }
 
 int64_t CDoubleCache::Seek(int64_t iFilePosition)
 {
-  /* Check whether position is NOT in our current cache but IS in our old cache.
-   * This is faster/more efficient than having to possibly wait for data in the
-   * Seek() call below
-   */
-  if (!m_pCache->IsCachedPosition(iFilePosition) &&
-       m_pCacheOld && m_pCacheOld->IsCachedPosition(iFilePosition))
+  // FIXME: Waitfor data is broken?
+  if (!m_pCache2->IsCachedPosition(iFilePosition))
   {
-    return CACHE_RC_ERROR; // Request seek event, so caches are swapped
+    if (m_pCache1->Seek(iFilePosition) == iFilePosition)
+    {
+      m_pReadCache = m_pCache1;
+      return iFilePosition;
+    }
   }
 
-  return m_pCache->Seek(iFilePosition); // Normal seek
+  if (!m_pCache1->IsCachedPosition(iFilePosition))
+  {
+    if (m_pCache2->Seek(iFilePosition) == iFilePosition)
+    {
+      m_pReadCache = m_pCache2;
+      return iFilePosition;
+    }
+  }
+
+  return CACHE_RC_ERROR; // Request seek event
 }
 
 bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway)
 {
-  if (!clearAnyway && m_pCache->IsCachedPosition(iSourcePosition)
-      && (!m_pCacheOld || !m_pCacheOld->IsCachedPosition(iSourcePosition)
-          || m_pCache->CachedDataEndPos() >= m_pCacheOld->CachedDataEndPos()))
+  if (!clearAnyway && m_pCache1->IsCachedPosition(iSourcePosition)
+      && (!m_pCache2->IsCachedPosition(iSourcePosition)
+          || m_pCache1->CachedDataEndPos() >= m_pCache2->CachedDataEndPos()))
   {
-    return m_pCache->Reset(iSourcePosition, clearAnyway);
+    m_pWriteCache = m_pCache1;
   }
-  if (!m_pCacheOld)
+  else
   {
-    CCacheStrategy *pCacheNew = m_pCache->CreateNew();
-    if (pCacheNew->Open() != CACHE_RC_OK)
-    {
-      delete pCacheNew;
-      return m_pCache->Reset(iSourcePosition, clearAnyway);
-    }
-    bool bRes = pCacheNew->Reset(iSourcePosition, clearAnyway);
-    m_pCacheOld = m_pCache;
-    m_pCache = pCacheNew;
-    return bRes;
+    m_pWriteCache = m_pCache2;
   }
-  bool bRes = m_pCacheOld->Reset(iSourcePosition, clearAnyway);
-  CCacheStrategy *tmp = m_pCacheOld;
-  m_pCacheOld = m_pCache;
-  m_pCache = tmp;
-  return bRes;
+
+  return m_pWriteCache->Reset(iSourcePosition, clearAnyway);
 }
 
 void CDoubleCache::EndOfInput()
 {
-  m_pCache->EndOfInput();
+  m_pWriteCache->EndOfInput();
 }
 
 bool CDoubleCache::IsEndOfInput()
 {
-  return m_pCache->IsEndOfInput();
+  return m_pReadCache->IsEndOfInput();
 }
 
 void CDoubleCache::ClearEndOfInput()
 {
-  m_pCache->ClearEndOfInput();
+  m_pWriteCache->ClearEndOfInput();
 }
 
 int64_t CDoubleCache::CachedDataEndPos()
 {
-  return m_pCache->CachedDataEndPos();
+  return m_pWriteCache->CachedDataEndPos(); // FIXME?
+}
+
+int64_t CDoubleCache::CachedDataBeginPos()
+{
+  return m_pWriteCache->CachedDataBeginPos(); // FIXME?
 }
 
 int64_t CDoubleCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
 {
-  int64_t ret = m_pCache->CachedDataEndPosIfSeekTo(iFilePosition);
-  if (m_pCacheOld)
-    return std::max(ret, m_pCacheOld->CachedDataEndPosIfSeekTo(iFilePosition));
-  return ret;
+  return std::max(m_pCache1->CachedDataEndPosIfSeekTo(iFilePosition), m_pCache2->CachedDataEndPosIfSeekTo(iFilePosition));
 }
 
 bool CDoubleCache::IsCachedPosition(int64_t iFilePosition)
 {
-  return m_pCache->IsCachedPosition(iFilePosition) || (m_pCacheOld && m_pCacheOld->IsCachedPosition(iFilePosition));
+  return m_pCache1->IsCachedPosition(iFilePosition) || m_pCache2->IsCachedPosition(iFilePosition);
 }
 
 CCacheStrategy *CDoubleCache::CreateNew()
 {
-  return new CDoubleCache(m_pCache->CreateNew());
+  return new CDoubleCache(m_pCache1->CreateNew());
 }
-

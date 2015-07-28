@@ -45,7 +45,8 @@ public:
     virtual bool Reset(int64_t pos, bool clearAnyway=true) ;
 
     virtual int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition);
-    virtual int64_t CachedDataEndPos(); 
+    virtual int64_t CachedDataBeginPos(); 
+    virtual int64_t CachedDataEndPos();
     virtual bool IsCachedPosition(int64_t iFilePosition);
 
     virtual CCacheStrategy *CreateNew();
