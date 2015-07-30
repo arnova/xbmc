@@ -333,7 +333,7 @@ size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
     // Check cache1 is active, so check cache2 (age)
     if (iLastCacheTime2 == 0 || iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
     {
-      return std::max(iFree + m_pCache2->GetMaxWriteSize(iRequestSize), iRequestSize);
+      return std::min(iFree + m_pCache2->GetMaxWriteSize(iRequestSize), iRequestSize);
     }
   }
   else
@@ -341,7 +341,7 @@ size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
     // Check cache2 is active, so check cache1 (age)
     if (iLastCacheTime1 == 0 || iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
     {
-      return std::max(iFree + m_pCache1->GetMaxWriteSize(iRequestSize), iRequestSize);
+      return std::min(iFree + m_pCache1->GetMaxWriteSize(iRequestSize), iRequestSize);
     }
 
   }
@@ -352,7 +352,7 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
 {
   size_t iWritten = m_pWriteCache->WriteToCache(pBuffer, iSize);
 
-  if (iWritten < iSize) // Full?
+  if (iWritten >= 0 && iWritten < iSize) // Full?
   {
     if (m_pCache1 == m_pWriteCache)
     {
