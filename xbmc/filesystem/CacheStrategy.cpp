@@ -306,7 +306,15 @@ CDoubleCache::~CDoubleCache()
 
 int CDoubleCache::Open()
 {
-  return m_pCache1->Open() && m_pCache2->Open();
+  printf("Open1\n");
+  int iRes = m_pCache1->Open();
+  if (iRes == CACHE_RC_OK)
+  {
+    printf("Open2\n");
+    return m_pCache2->Open();
+  }
+
+  return iRes;
 }
 
 void CDoubleCache::Close()
@@ -374,31 +382,45 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
 
 int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
 {
-  // Update timestamp for active read cache
-  if (m_pReadCache == m_pCache1)
-    iLastCacheTime1 = XbmcThreads::SystemClockMillis();
-  else
-    iLastCacheTime2 = XbmcThreads::SystemClockMillis();
-    
   int iRead = m_pReadCache->ReadFromCache(pBuffer, iMaxSize);
 
-  if (iRead >= 0 && (size_t) iRead != iMaxSize)
+  if (iRead > 0)
+  {
+    // Got data: Update timestamp for active read cache
+    if (m_pReadCache == m_pCache1)
+      iLastCacheTime1 = XbmcThreads::SystemClockMillis();
+    else
+      iLastCacheTime2 = XbmcThreads::SystemClockMillis();
+  }
+
+  // FIXME: How about if the caches are empty at this point?
+  if (iRead >= 0 && (size_t) iRead < iMaxSize)
   {
     // Switch to other cache if not data left in current read cache
     if (m_pCache1->CachedDataEndPos() == m_pCache2->CachedDataBeginPos() + 1)
     {
-      m_pReadCache = m_pCache2;
       // Read remaining data (if any)
-      iRead += m_pReadCache->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
+      int iRead2 = m_pCache2->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
+      if (iRead2 > 0)
+      {
+        m_pReadCache = m_pCache2;
+        iLastCacheTime2 = XbmcThreads::SystemClockMillis();
+        iRead += iRead2;
+      }
     }
     else if (m_pCache2->CachedDataEndPos() == m_pCache1->CachedDataBeginPos() + 1)
     {
-      m_pReadCache = m_pCache1;
       // Read remaining data (if any)
-      iRead += m_pReadCache->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
+      int iRead2 = m_pCache1->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
+      if (iRead2 > 0)
+      {
+        m_pReadCache = m_pCache1;
+        iLastCacheTime1 = XbmcThreads::SystemClockMillis();
+        iRead += iRead2;
+      }
     }
   }
-  
+
   return iRead;
 }
 
@@ -447,7 +469,15 @@ bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway)
   }
   else
   {
-    m_pWriteCache = m_pCache2;
+    // Check cache age and use the oldest
+    if (iLastCacheTime1 == 0 || (iLastCacheTime2 != 0 && iLastCacheTime1 > iLastCacheTime2))
+    {
+      m_pWriteCache = m_pCache1;
+    }
+    else
+    {
+      m_pWriteCache = m_pCache2;
+    }
   }
 
   return m_pWriteCache->Reset(iSourcePosition, clearAnyway);
