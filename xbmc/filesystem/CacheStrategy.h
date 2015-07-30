@@ -145,8 +145,8 @@ protected:
   CCacheStrategy *m_pWriteCache;
   CCacheStrategy *m_pReadCache;
 
-  unsigned iLastCacheTime1;
-  unsigned iLastCacheTime2;
+  unsigned m_iLastCacheTime1;
+  unsigned m_iLastCacheTime2;
 };
 
 }

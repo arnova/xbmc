@@ -293,6 +293,8 @@ CDoubleCache::CDoubleCache(CCacheStrategy *impl)
   m_pCache1 = impl;
   m_pReadCache = impl;
   m_pWriteCache = impl;
+  m_iLastCacheTime1 = 0;
+  m_iLastCacheTime2 = 0;
 
   m_pCache2 = m_pCache1->CreateNew();
 }
@@ -331,7 +333,7 @@ size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
   if (m_pCache1 == m_pWriteCache)
   {
     // Check cache1 is active, so check cache2 (age)
-    if (iLastCacheTime2 == 0 || iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+    if (m_iLastCacheTime2 == 0 || m_iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
     {
       return std::min(iFree + m_pCache2->GetMaxWriteSize(iRequestSize), iRequestSize);
     }
@@ -339,7 +341,7 @@ size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
   else
   {
     // Check cache2 is active, so check cache1 (age)
-    if (iLastCacheTime1 == 0 || iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+    if (m_iLastCacheTime1 == 0 || m_iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
     {
       return std::min(iFree + m_pCache1->GetMaxWriteSize(iRequestSize), iRequestSize);
     }
@@ -356,24 +358,22 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
   {
     if (m_pCache1 == m_pWriteCache)
     {
-      // Check cache1 is active, so check cache2 (age)
-      if (iLastCacheTime2 == 0 || iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+      // Cache1 is active, so check cache2 (age)
+      if (m_iLastCacheTime2 == 0 || m_iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
       {
         m_pWriteCache = m_pCache2; // Switch to cache 2 for write
         m_pWriteCache->Reset(m_pCache1->CachedDataEndPos() + 1);  // FIXME for EOF
         iWritten += m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
-        iLastCacheTime2 = 0;
       }
     }
     else
     {
-      // Check cache2 is active, so check cache1 (age)
-      if (iLastCacheTime1 == 0 || iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+      // Cache2 is active, so check cache1 (age)
+      if (m_iLastCacheTime1 == 0 || m_iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
       {
         m_pWriteCache = m_pCache1; // Switch to cache 1 for write
         m_pWriteCache->Reset(m_pCache2->CachedDataEndPos() + 1);  // FIXME for EOF
         iWritten += m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
-        iLastCacheTime1 = 0;
       }
     }
   }
@@ -388,9 +388,9 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
   {
     // Got data: Update timestamp for active read cache
     if (m_pReadCache == m_pCache1)
-      iLastCacheTime1 = XbmcThreads::SystemClockMillis();
+      m_iLastCacheTime1 = XbmcThreads::SystemClockMillis();
     else
-      iLastCacheTime2 = XbmcThreads::SystemClockMillis();
+      m_iLastCacheTime2 = XbmcThreads::SystemClockMillis();
   }
 
   // FIXME: How about if the caches are empty at this point?
@@ -404,7 +404,7 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
       if (iRead2 > 0)
       {
         m_pReadCache = m_pCache2;
-        iLastCacheTime2 = XbmcThreads::SystemClockMillis();
+        m_iLastCacheTime2 = XbmcThreads::SystemClockMillis();
         iRead += iRead2;
       }
     }
@@ -415,7 +415,7 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
       if (iRead2 > 0)
       {
         m_pReadCache = m_pCache1;
-        iLastCacheTime1 = XbmcThreads::SystemClockMillis();
+        m_iLastCacheTime1 = XbmcThreads::SystemClockMillis();
         iRead += iRead2;
       }
     }
@@ -426,13 +426,16 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
 
 int64_t CDoubleCache::WaitForData(unsigned int iMinAvail, unsigned int iMillis)
 {
+  printf("waitfordata start\n");
   if (iMillis == 0)
   {
     // Cached size requested, return total for both caches
     return m_pCache1->WaitForData(iMinAvail, 0) + m_pCache2->WaitForData(iMinAvail, 0);
   }
   // FIXME: Need to check the other cache as well and not ask for more than available!
-  return m_pReadCache->WaitForData(iMinAvail, iMillis);
+  int64_t res = m_pReadCache->WaitForData(iMinAvail, iMillis);
+  printf("waitfordata done\n");
+  return res;
 }
 
 int64_t CDoubleCache::Seek(int64_t iFilePosition)
@@ -465,17 +468,20 @@ bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway)
       && (!m_pCache2->IsCachedPosition(iSourcePosition)
           || m_pCache1->CachedDataEndPos() >= m_pCache2->CachedDataEndPos()))
   {
+    printf("reset keep1\n");
     m_pWriteCache = m_pCache1;
   }
   else
   {
     // Check cache age and use the oldest
-    if (iLastCacheTime1 == 0 || (iLastCacheTime2 != 0 && iLastCacheTime1 > iLastCacheTime2))
+    if (m_iLastCacheTime1 == 0 || (m_iLastCacheTime2 != 0 && m_iLastCacheTime1 > m_iLastCacheTime2))
     {
+      printf("reset swap to1\n");
       m_pWriteCache = m_pCache1;
     }
     else
     {
+      printf("reset swap to2\n");
       m_pWriteCache = m_pCache2;
     }
   }
