@@ -347,6 +347,7 @@ size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
     }
 
   }
+
   return iFree;
 }
 
@@ -384,6 +385,7 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
       }
     }
   }
+
   return iWritten;
 }
 
@@ -399,11 +401,17 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
     else
       m_iLastCacheTime2 = XbmcThreads::SystemClockMillis();
   }
+  printf("Read cache with iRead = %li iMaxSize = %li\n", iRead, iMaxSize);
 
   // FIXME: How about if the caches are empty at this point?
-  if (iRead >= 0 && (size_t) iRead < iMaxSize)
+  if (iRead == 0)
   {
-    printf("Read cache empty with iRead = %li iMaxSize = %li\n", iRead, iMaxSize);
+    if (m_pReadCache == m_pCache1)
+      printf("current read cache is 1\n");
+    else
+      printf("current read cache is 2\n");
+    printf("1 begin = %li end = %li\n", m_pCache1->CachedDataBeginPos(), m_pCache1->CachedDataEndPos());
+    printf("2 begin = %li end = %li\n", m_pCache2->CachedDataBeginPos(), m_pCache2->CachedDataEndPos());
     // Switch to other cache if no data left in current read cache and caches are stacked
     if (m_pReadCache->CachedDataEndPos() == m_pCache2->CachedDataBeginPos() + 1)
     {
@@ -436,12 +444,12 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
 
 int64_t CDoubleCache::WaitForData(unsigned int iMinAvail, unsigned int iMillis)
 {
-  printf("waitfordata start\n");
   if (iMillis == 0)
   {
     // Cached size requested, return total for both caches
     return m_pCache1->WaitForData(iMinAvail, 0) + m_pCache2->WaitForData(iMinAvail, 0);
   }
+  printf("waitfordata start\n");
   // FIXME: Need to check the other cache as well and not ask for more than available!
   int64_t res = m_pReadCache->WaitForData(iMinAvail, iMillis);
   printf("waitfordata done\n");

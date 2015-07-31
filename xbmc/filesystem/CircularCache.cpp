@@ -193,7 +193,7 @@ int64_t CCircularCache::WaitForData(unsigned int minimum, unsigned int millis)
     minimum = m_size - m_size_back;
 
   XbmcThreads::EndTime endtime(millis);
-  while (!IsEndOfInput() && avail < minimum && !endtime.IsTimePast() )
+  while (!IsEndOfInput() && avail < minimum && !endtime.IsTimePast() && (m_end - m_beg) < m_size)
   {
     lock.Leave();
     m_written.WaitMSec(50); // may miss the deadline. shouldn't be a problem.
@@ -207,7 +207,7 @@ int64_t CCircularCache::WaitForData(unsigned int minimum, unsigned int millis)
 int64_t CCircularCache::Seek(int64_t pos)
 {
   CSingleLock lock(m_sync);
-
+  printf("circ cache seek\n");
   // if seek is a bit over what we have, try to wait a few seconds for the data to be available.
   // we try to avoid a (heavy) seek on the source
   if (pos >= m_end && pos < m_end + 100000)

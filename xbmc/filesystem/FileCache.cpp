@@ -416,8 +416,10 @@ retry:
 
   if (iRc == CACHE_RC_WOULD_BLOCK)
   {
+    printf("filecache read waitfordata\n");
     // just wait for some data to show up
     iRc = m_pCache->WaitForData(1, 10000);
+    
     if (iRc > 0)
       goto retry;
   }
@@ -477,6 +479,7 @@ int64_t CFileCache::Seek(int64_t iFilePosition, int iWhence)
     if(m_seekPos < iTarget)
     {
       CLog::Log(LOGDEBUG,"%s - waiting for position %" PRId64".", __FUNCTION__, iTarget);
+      printf("filecache seek waitfordata\n");
       if(m_pCache->WaitForData((unsigned)(iTarget - m_seekPos), 10000) < iTarget - m_seekPos)
       {
         CLog::Log(LOGWARNING,"%s - failed to get remaining data", __FUNCTION__);
