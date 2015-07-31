@@ -356,6 +356,7 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
 
   if (iWritten >= 0 && iWritten < iSize) // Full?
   {
+    printf("iWritten = %li iSize = %li\n", iWritten, iSize);
     if (m_pCache1 == m_pWriteCache)
     {
       // Cache1 is active, so check cache2 (age)
@@ -402,8 +403,9 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
   // FIXME: How about if the caches are empty at this point?
   if (iRead >= 0 && (size_t) iRead < iMaxSize)
   {
-    // Switch to other cache if not data left in current read cache
-    if (m_pCache1->CachedDataEndPos() == m_pCache2->CachedDataBeginPos() + 1)
+    printf("Read cache empty with iRead = %li iMaxSize = %li\n", iRead, iMaxSize);
+    // Switch to other cache if no data left in current read cache and caches are stacked
+    if (m_pReadCache->CachedDataEndPos() == m_pCache2->CachedDataBeginPos() + 1)
     {
       // Read remaining data (if any)
       int iRead2 = m_pCache2->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
@@ -415,7 +417,7 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
         iRead += iRead2;
       }
     }
-    else if (m_pCache2->CachedDataEndPos() == m_pCache1->CachedDataBeginPos() + 1)
+    else if (m_pReadCache->CachedDataEndPos() == m_pCache1->CachedDataBeginPos() + 1)
     {
       // Read remaining data (if any)
       int iRead2 = m_pCache1->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
