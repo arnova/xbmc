@@ -361,9 +361,12 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
       // Cache1 is active, so check cache2 (age)
       if (m_iLastCacheTime2 == 0 || m_iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
       {
+        printf("Switch to writecache2\n");
         m_pWriteCache = m_pCache2; // Switch to cache 2 for write
         m_pWriteCache->Reset(m_pCache1->CachedDataEndPos() + 1);  // FIXME for EOF
-        iWritten += m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
+        int iWritten2 = m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
+        if (iWritten2 > 0)
+          iWritten += iWritten2;
       }
     }
     else
@@ -371,9 +374,12 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
       // Cache2 is active, so check cache1 (age)
       if (m_iLastCacheTime1 == 0 || m_iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
       {
+        printf("Switch to writecache1\n");
         m_pWriteCache = m_pCache1; // Switch to cache 1 for write
         m_pWriteCache->Reset(m_pCache2->CachedDataEndPos() + 1);  // FIXME for EOF
-        iWritten += m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
+        int iWritten2 = m_pWriteCache->WriteToCache(pBuffer + iWritten, iSize - iWritten);
+        if (iWritten2 > 0)
+          iWritten += iWritten2;
       }
     }
   }
@@ -403,6 +409,7 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
       int iRead2 = m_pCache2->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
       if (iRead2 > 0)
       {
+        printf("Switch to readcache2\n");
         m_pReadCache = m_pCache2;
         m_iLastCacheTime2 = XbmcThreads::SystemClockMillis();
         iRead += iRead2;
@@ -414,6 +421,7 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
       int iRead2 = m_pCache1->ReadFromCache(pBuffer + iRead, iMaxSize - iRead);
       if (iRead2 > 0)
       {
+        printf("Switch to readcache1\n");
         m_pReadCache = m_pCache1;
         m_iLastCacheTime1 = XbmcThreads::SystemClockMillis();
         iRead += iRead2;
