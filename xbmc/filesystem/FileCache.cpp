@@ -406,6 +406,7 @@ ssize_t CFileCache::Read(void* lpBuf, size_t uiBufSize)
     uiBufSize = SSIZE_MAX;
 
 retry:
+  printf("Read at pos %li\n", m_readPos);
   // attempt to read
   iRc = m_pCache->ReadFromCache((char *)lpBuf, (size_t)uiBufSize);
   if (iRc > 0)

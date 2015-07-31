@@ -333,7 +333,7 @@ size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
   if (m_pCache1 == m_pWriteCache)
   {
     // Check cache1 is active, so check cache2 (age)
-    if (m_iLastCacheTime2 == 0 || m_iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+    if (m_iLastCacheTime2 == 0 || m_iLastCacheTime2 + CACHE_AGE < XbmcThreads::SystemClockMillis())
     {
       return std::min(iFree + m_pCache2->GetMaxWriteSize(iRequestSize), iRequestSize);
     }
@@ -341,7 +341,7 @@ size_t CDoubleCache::GetMaxWriteSize(const size_t& iRequestSize)
   else
   {
     // Check cache2 is active, so check cache1 (age)
-    if (m_iLastCacheTime1 == 0 || m_iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+    if (m_iLastCacheTime1 == 0 || m_iLastCacheTime1 + CACHE_AGE < XbmcThreads::SystemClockMillis())
     {
       return std::min(iFree + m_pCache1->GetMaxWriteSize(iRequestSize), iRequestSize);
     }
@@ -361,7 +361,7 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
     if (m_pCache1 == m_pWriteCache)
     {
       // Cache1 is active, so check cache2 (age)
-      if (m_iLastCacheTime2 == 0 || m_iLastCacheTime2 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+      if (m_iLastCacheTime2 == 0 || m_iLastCacheTime2 + CACHE_AGE < XbmcThreads::SystemClockMillis())
       {
         printf("Switch to writecache2\n");
         m_pWriteCache = m_pCache2; // Switch to cache 2 for write
@@ -374,7 +374,7 @@ int CDoubleCache::WriteToCache(const char *pBuffer, size_t iSize)
     else
     {
       // Cache2 is active, so check cache1 (age)
-      if (m_iLastCacheTime1 == 0 || m_iLastCacheTime1 + CACHE_AGE > XbmcThreads::SystemClockMillis())
+      if (m_iLastCacheTime1 == 0 || m_iLastCacheTime1 + CACHE_AGE < XbmcThreads::SystemClockMillis())
       {
         printf("Switch to writecache1\n");
         m_pWriteCache = m_pCache1; // Switch to cache 1 for write
@@ -402,16 +402,16 @@ int CDoubleCache::ReadFromCache(char *pBuffer, size_t iMaxSize)
       m_iLastCacheTime2 = XbmcThreads::SystemClockMillis();
   }
   printf("Read cache with iRead = %li iMaxSize = %li\n", iRead, iMaxSize);
+  if (m_pReadCache == m_pCache1)
+    printf("***********current read cache is 1\n");
+  else
+    printf("***********current read cache is 2\n");
 
   // FIXME: How about if the caches are empty at this point?
-  if (iRead == 0)
+  if (iRead >= 0 && iRead < iMaxSize)
   {
-    if (m_pReadCache == m_pCache1)
-      printf("current read cache is 1\n");
-    else
-      printf("current read cache is 2\n");
-    printf("1 begin = %li end = %li\n", m_pCache1->CachedDataBeginPos(), m_pCache1->CachedDataEndPos());
-    printf("2 begin = %li end = %li\n", m_pCache2->CachedDataBeginPos(), m_pCache2->CachedDataEndPos());
+    printf("1 begin = %li end = %li age = %li \n", m_pCache1->CachedDataBeginPos(), m_pCache1->CachedDataEndPos(), m_iLastCacheTime1);
+    printf("2 begin = %li end = %li age = %li \n", m_pCache2->CachedDataBeginPos(), m_pCache2->CachedDataEndPos(), m_iLastCacheTime2);
     // Switch to other cache if no data left in current read cache and caches are stacked
     if (m_pReadCache->CachedDataEndPos() == m_pCache2->CachedDataBeginPos() + 1)
     {
