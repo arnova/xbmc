@@ -192,7 +192,7 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   if (m_writePos == m_end1)
   {
     back  = (size_t)(m_writePos - m_beg1);
-    front = (size_t)(m_end1 - m_cur); // FIXME
+    front = (size_t)(m_end1 - m_readPos);
     pos   = m_start1 + ((back + front) % size1); // FIXME, need to consider m_start2 and limited size
 
     if ((m_time2 == 0) || (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
@@ -209,7 +209,7 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   else
   {
     back  = (size_t)(m_writePos - m_beg2);
-    front = (size_t)(m_end2 - m_cur); // FIXME
+    front = (size_t)(m_end2 - m_readPos);
     pos   = m_start2 + ((back + front) % size2); // FIXME, need to consider m_start2 and limited size
 
     if ((m_time1 == 0) || (m_time1 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
