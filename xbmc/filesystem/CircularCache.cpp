@@ -25,7 +25,7 @@
 #include "utils/TimeUtils.h"
 #include "CircularCache.h"
 
-#define MAX_CACHE_AGE 10000 // 10 seconds
+#define MAX_CACHE_AGE 15000 // 15 seconds
 
 using namespace XFILE;
 
@@ -38,7 +38,7 @@ CCircularCache::CCircularCache(size_t front, size_t back, bool bDoubleCache)
  , m_beg2(-1)
  , m_end2(-1)
  , m_time2(0)
- , m_start2(m_size << 1)
+ , m_start2(m_size / 2)
  , m_cur(0)
  , m_buf(NULL)
  , m_size(front + back)
@@ -72,7 +72,7 @@ int CCircularCache::Open()
   m_start1 = 0;
   m_beg2 = -1;
   m_end2 = -1;
-  m_start2 = (m_size << 1);
+  m_start2 = (m_size / 2);
   m_cur  = 0;
   return CACHE_RC_OK;
 }
@@ -122,7 +122,7 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
     }
     else
     {
-      limit = (m_size << 1) - std::min(back, (m_size_back << 1)) - front;
+      limit = (m_size / 2) - std::min(back, (m_size_back / 2)) - front;
     }
   }
   else
@@ -139,7 +139,7 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
     }
     else
     {
-      limit = (m_size << 1) - std::min(back, (m_size_back << 1)) - front;
+      limit = (m_size / 2) - std::min(back, (m_size_back / 2)) - front;
     }
   }
 
@@ -201,7 +201,7 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
     else
     {
       // Treat both caches as equals
-      limit = (m_size << 1) - std::min(back, (m_size_back << 1)) - front;
+      limit = (m_size / 2) - std::min(back, (m_size_back / 2)) - front;
     }
   }
   else
@@ -218,7 +218,7 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
     else
     {
       // Treat both caches as equals
-      limit = (m_size << 1) - std::min(back, (m_size_back << 1)) - front;
+      limit = (m_size / 2) - std::min(back, (m_size_back / 2)) - front;
     }
   }
 
@@ -357,8 +357,8 @@ int64_t CCircularCache::WaitForData(unsigned int minimum, unsigned int millis)
   if (millis == 0 || IsEndOfInput())
     return avail; // FIXME?
 
-  if (minimum > (m_size - m_size_back) << 1) // Take into account 2 active sub caches
-    minimum = (m_size - m_size_back) << 1;
+  if (minimum > (m_size - m_size_back) / 2) // Take into account 2 active sub caches
+    minimum = (m_size - m_size_back) / 2;
 
   XbmcThreads::EndTime endtime(millis);
   while (!IsEndOfInput() && avail < minimum && !endtime.IsTimePast() )
