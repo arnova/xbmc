@@ -422,21 +422,38 @@ int64_t CCircularCache::Seek(int64_t pos)
 void CCircularCache::Reset(int64_t pos, bool clearAnyway)
 {
   CSingleLock lock(m_sync);
-  if (clearAnyway || !IsCachedPosition(pos))
+
+  // FIXME: clearAnyway is broken, m_writePos update?
+  if ((!clearAnyway)
   {
-    // FIXME: cache swap logic, take into account cache age
     if (m_readPos >= m_beg1 && m_readPos <= m_end1)
     {
-      // Switch to cache 2
-      m_end2 = pos;
-      m_beg2 = pos;
+      m_readPos = pos;
+      m_writePos = m_end1; // FIXME: +1 ?
+      return;
     }
-    else
+    else if (m_readPos >= m_beg2 && m_readPos <= m_end2)
     {
-      // Switch to cache 1
-      m_end1 = pos;
-      m_beg1 = pos;
+      m_readPos = pos;
+      m_writePos = m_end2; // FIXME: +1 ?
+      return;
     }
+  }
+
+  // Check cache age and use the oldest
+  if ((m_iLastCacheTime1 == 0 || (m_iLastCacheTime2 != 0 && m_iLastCacheTime1 > m_iLastCacheTime2)))
+  {
+    // Switch to cache 1
+    m_end1 = pos;
+    m_beg1 = pos;
+    m_writePos = pos;
+  }
+  else
+  {
+    // Switch to cache 2
+    m_end2 = pos;
+    m_beg2 = pos;
+    m_writePos = pos;
   }
 
   m_readPos = pos;
