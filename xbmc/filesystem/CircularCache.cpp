@@ -345,6 +345,31 @@ int CCircularCache::ReadFromCache(char *buf, size_t len)
   return len;
 }
 
+int64_t CCircularCache::GetAvailableData()
+{
+  CSingleLock lock(m_sync);
+
+  int64_t avail;
+  if (m_readPos >= m_beg1 && m_readPos <= m_end1)
+  {
+    avail = m_end1 - m_readPos;
+
+    // Are the caches chained?
+    if (m_end1 == m_beg2 + 1)
+      avail += m_end2 - m_beg2;
+  }
+  else
+  {
+    avail = m_end2 - m_readPos;
+
+    // Are the caches chained?
+    if (m_end2 == m_beg1 + 1)
+      avail += m_end1 - m_beg1;
+  }
+
+  return avail;
+}
+
 /* Wait "millis" milliseconds for "minimum" amount of data to come in.
  * Note that caller needs to make sure there's sufficient space in the forward
  * buffer for "minimum" bytes else we may block the full timeout time
@@ -353,14 +378,10 @@ int64_t CCircularCache::WaitForData(unsigned int minimum, unsigned int millis)
 {
   CSingleLock lock(m_sync);
 
-  int64_t avail;
-  if (m_readPos >= m_beg1 && m_readPos <= m_end1)
-    avail = m_end1 - m_readPos;
-  else
-    avail = m_end2 - m_readPos;
+  int64_t avail = GetAvailableData();
 
   if (millis == 0 || IsEndOfInput())
-    return avail; // FIXME?
+    return avail;
 
   if (minimum > (m_size - m_size_back) / 2) // Take into account 2 active sub caches
     minimum = (m_size - m_size_back) / 2;
@@ -372,10 +393,7 @@ int64_t CCircularCache::WaitForData(unsigned int minimum, unsigned int millis)
     m_written.WaitMSec(50); // may miss the deadline. shouldn't be a problem.
     lock.Enter();
 
-    if (m_readPos >= m_beg1 && m_readPos <= m_end1)
-      avail = m_end1 - m_readPos;
-    else
-      avail = m_end2 - m_readPos;
+    avail = GetAvailableData();
   }
 
   return avail;

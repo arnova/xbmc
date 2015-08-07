@@ -50,6 +50,8 @@ public:
 
     virtual CCacheStrategy *CreateNew();
 protected:
+    int64_t GetAvailableData()
+
     int64_t           m_beg1;         /**< index in file (not buffer) of beginning of valid data */
     int64_t           m_end1;         /**< index in file (not buffer) of end of valid data */
     unsigned          m_time1;        /**< The last timestamp this cache was used */
