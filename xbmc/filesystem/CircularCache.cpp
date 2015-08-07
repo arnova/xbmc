@@ -112,13 +112,13 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
   size_t front;
   size_t pos;
   size_t limit;
-  if (m_writePos == m_end1)
+  if (!m_double_cache || m_writePos == m_end1)
   {
     back  = (size_t)(m_writePos - m_beg1);
     front = (size_t)(m_end1 - m_writePos);
     pos   = m_start1 + ((m_start1 + back + front) % size1);
 
-    if ((m_time2 == 0) || (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
+    if (!m_double_cache || (m_time2 == 0) || (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
     {
       limit = m_size - std::min(back, m_size_back) - front;
     }
@@ -189,13 +189,13 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   size_t front;
   size_t pos;
   size_t limit;
-  if (m_writePos == m_end1)
+  if (!m_double_cache || m_writePos == m_end1)
   {
     back  = (size_t)(m_writePos - m_beg1);
     front = (size_t)(m_end1 - m_readPos);
     pos   = m_start1 + ((back + front) % size1); // FIXME, need to consider m_start2 and limited size
 
-    if ((m_time2 == 0) || (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
+    if (!m_double_cache || (m_time2 == 0) || (m_time2 + MAX_CACHE_AGE > XbmcThreads::SystemClockMillis()))
     {
       // Other cache expired, make it available for active cache
       limit = m_size - std::min(back, m_size_back) - front;
@@ -449,7 +449,7 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
       m_writePos = m_end1; // FIXME: +1 ?
       return;
     }
-    else if (IsCached2Position(m_readPos))
+    else if (!m_double_cache && IsCached2Position(m_readPos))
     {
       m_readPos = pos;
       m_writePos = m_end2; // FIXME: +1 ?
@@ -458,7 +458,7 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
   }
 
   // Check cache age and use the oldest
-  if ((m_iLastCacheTime1 == 0 || (m_iLastCacheTime2 != 0 && m_iLastCacheTime1 > m_iLastCacheTime2)))
+  if (!m_double_cache || (m_iLastCacheTime1 == 0) || (m_time2 != 0 && m_time1 > m_time2))
   {
     // Switch to cache 1
     m_end1 = pos;
