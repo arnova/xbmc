@@ -51,6 +51,8 @@ public:
     virtual CCacheStrategy *CreateNew();
 protected:
     int64_t GetAvailableData()
+    bool IsCached1Position(int64_t iFilePosition);
+    bool IsCached2Position(int64_t iFilePosition);
 
     int64_t           m_beg1;         /**< index in file (not buffer) of beginning of valid data */
     int64_t           m_end1;         /**< index in file (not buffer) of end of valid data */

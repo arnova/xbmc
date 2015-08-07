@@ -243,7 +243,7 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
 
   m_writePos += len; // Update write position
 
-  if (m_writePos >= m_beg1 && m_writePos <= m_end1)
+  if (IsCached1Position(m_writePos))
   {
     m_end1 += len;
 
@@ -308,7 +308,7 @@ int CCircularCache::ReadFromCache(char *buf, size_t len)
     size2 = m_start1 - m_start2;
   }
 
-  if (m_readPos >= m_beg1 && m_readPos <= m_end1)
+  if (IsCached1Position(m_readPos))
   {
     pos     = m_start1 + ((m_start1 + back + front) % size1); // FIXME, need to consider m_start2 and limited size
     front   = (size_t)(m_end1 - m_readPos);
@@ -350,7 +350,7 @@ int64_t CCircularCache::GetAvailableData()
   CSingleLock lock(m_sync);
 
   int64_t avail;
-  if (m_readPos >= m_beg1 && m_readPos <= m_end1)
+  if (IsCached1Position(m_readPos))
   {
     avail = m_end1 - m_readPos;
 
@@ -428,7 +428,7 @@ int64_t CCircularCache::Seek(int64_t pos)
     lock.Enter();
   }
 
-  if ((pos >= m_beg1 && pos <= m_end1) || (pos >= m_beg2 && pos <= m_end2))
+  if (IsCachedPosition(pos))
   {
     m_readPos = pos;
     return pos;
@@ -443,13 +443,13 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
 
   if ((!clearAnyway)
   {
-    if (m_readPos >= m_beg1 && m_readPos <= m_end1)
+    if (IsCached1Position(m_readPos))
     {
       m_readPos = pos;
       m_writePos = m_end1; // FIXME: +1 ?
       return;
     }
-    else if (m_readPos >= m_beg2 && m_readPos <= m_end2)
+    else if (IsCached2Position(m_readPos))
     {
       m_readPos = pos;
       m_writePos = m_end2; // FIXME: +1 ?
@@ -478,10 +478,10 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
 
 int64_t CCircularCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
 {
-  if (iFilePosition >= m_beg1 && iFilePosition <= m_end1)
+  if (IsCached1Position(iFilePosition))
     return m_end1;
 
-  if (iFilePosition >= m_beg2 && iFilePosition <= m_end2)
+  if (IsCached2Position(iFilePosition))
     return m_end2;
 
   return iFilePosition;
@@ -489,15 +489,25 @@ int64_t CCircularCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
 
 int64_t CCircularCache::CachedDataEndPos()
 {
-  if (m_readPos >= m_beg1 && m_readPos <= m_end1)
+  if (IsCached1Position(m_readPos))
     return m_end1;
   else
     return m_end2;
 }
 
+bool CCircularCache::IsCached1Position(int64_t iFilePosition)
+{
+  return (iFilePosition >= m_beg1 && iFilePosition <= m_end1);
+}
+
+bool CCircularCache::IsCached2Position(int64_t iFilePosition)
+{
+  return (iFilePosition >= m_beg2 && iFilePosition <= m_end2);
+}
+
 bool CCircularCache::IsCachedPosition(int64_t iFilePosition)
 {
-  return ((iFilePosition >= m_beg1 && iFilePosition <= m_end1) || (iFilePosition >= m_beg2 && iFilePosition <= m_end2));
+  return (IsCached1Position(iFilePosition) || IsCached1Position(iFilePosition));
 }
 
 CCacheStrategy *CCircularCache::CreateNew()
