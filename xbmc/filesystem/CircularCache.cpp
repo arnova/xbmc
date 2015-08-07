@@ -112,7 +112,7 @@ size_t CCircularCache::GetMaxWriteSize(const size_t& iRequestSize)
   size_t front;
   size_t pos;
   size_t limit;
-  if (m_writePos >= m_beg1 && m_writePos <= m_end1)
+  if (m_writePos == m_end1)
   {
     back  = (size_t)(m_writePos - m_beg1);
     front = (size_t)(m_end1 - m_writePos);
@@ -189,7 +189,7 @@ int CCircularCache::WriteToCache(const char *buf, size_t len)
   size_t front;
   size_t pos;
   size_t limit;
-  if (m_writePos >= m_beg1 && m_writePos <= m_end1)
+  if (m_writePos == m_end1)
   {
     back  = (size_t)(m_writePos - m_beg1);
     front = (size_t)(m_end1 - m_cur); // FIXME
@@ -423,7 +423,6 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
 {
   CSingleLock lock(m_sync);
 
-  // FIXME: clearAnyway is broken, m_writePos update?
   if ((!clearAnyway)
   {
     if (m_readPos >= m_beg1 && m_readPos <= m_end1)
