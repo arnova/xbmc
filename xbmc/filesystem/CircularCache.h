@@ -50,7 +50,7 @@ public:
 
     virtual CCacheStrategy *CreateNew();
 protected:
-    int64_t GetAvailableData()
+    int64_t GetAvailableData();
     bool IsCached1Position(int64_t iFilePosition);
     bool IsCached2Position(int64_t iFilePosition);
 
