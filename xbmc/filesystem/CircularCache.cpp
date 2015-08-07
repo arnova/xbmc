@@ -458,7 +458,7 @@ void CCircularCache::Reset(int64_t pos, bool clearAnyway)
   }
 
   // Check cache age and use the oldest
-  if (!m_double_cache || (m_iLastCacheTime1 == 0) || (m_time2 != 0 && m_time1 > m_time2))
+  if (!m_double_cache || (m_time1 == 0) || (m_time2 != 0 && m_time1 > m_time2))
   {
     // Switch to cache 1
     m_end1 = pos;
