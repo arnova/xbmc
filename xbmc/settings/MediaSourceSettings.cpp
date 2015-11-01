@@ -415,6 +415,7 @@ bool CMediaSourceSettings::GetSource(const std::string &category, const TiXmlNod
     share.m_strThumbnailImage = pThumbnailNode->FirstChild()->Value();
 
   XMLUtils::GetBoolean(source, "allowsharing", share.m_allowSharing);
+  XMLUtils::GetBoolean(source, "caching", share.m_enableCaching);
 
   return true;
 }
@@ -490,6 +491,7 @@ bool CMediaSourceSettings::SetSources(TiXmlNode *root, const char *section, cons
       XMLUtils::SetPath(&source, "thumbnail", share.m_strThumbnailImage);
 
     XMLUtils::SetBoolean(&source, "allowsharing", share.m_allowSharing);
+    XMLUtils::SetBoolean(&source, "caching", share.m_enableCaching);
 
     sectionNode->InsertEndChild(source);
   }
