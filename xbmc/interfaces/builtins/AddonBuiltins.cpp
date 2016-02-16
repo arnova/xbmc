@@ -282,7 +282,7 @@ static int StopScript(const std::vector<std::string>& params)
   AddonPtr script;
   if (CAddonMgr::GetInstance().GetAddon(params[0], script))
     scriptpath = script->LibPath();
-  CScriptInvocationManager::GetInstance().Stop(scriptpath);
+  CScriptInvocationManager::GetInstance().Stop(scriptpath, true);
 
   return 0;
 }
