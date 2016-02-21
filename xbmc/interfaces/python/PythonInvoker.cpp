@@ -440,6 +440,7 @@ void CPythonInvoker::executeScript(void *fp, const std::string &script, void *mo
 
 bool CPythonInvoker::stop(bool abort)
 {
+  printf("CPythonInvoker::stop abort=%i\n", abort);
   CSingleLock lock(m_critical);
   m_stop = true;
 
@@ -461,16 +462,20 @@ bool CPythonInvoker::stop(bool abort)
     m = PyImport_AddModule((char*)"xbmc");
     if (m == NULL || PyObject_SetAttrString(m, (char*)"abortRequested", PyBool_FromLong(1)))
       CLog::Log(LOGERROR, "CPythonInvoker(%d, %s): failed to set abortRequested", GetId(), m_sourceFile.c_str());
-
     PyThreadState_Swap(old);
     old = NULL;
     PyEval_ReleaseLock();
 
     XbmcThreads::EndTime timeout(PYTHON_SCRIPT_TIMEOUT);
+
+    printf("kill start\n");
     while (!m_stoppedEvent.WaitMSec(15))
     {
+      //pulseGlobalEvent();
       if (timeout.IsTimePast())
       {
+        printf("kill failed\n");
+        //while (1);
         CLog::Log(LOGERROR, "CPythonInvoker(%d, %s): script didn't stop in %d seconds - let's kill it", GetId(), m_sourceFile.c_str(), PYTHON_SCRIPT_TIMEOUT / 1000);
         break;
       }
@@ -485,6 +490,7 @@ bool CPythonInvoker::stop(bool abort)
       }
     }
 
+    printf("kill done\n");
     // Useful for add-on performance metrics
     if (!timeout.IsTimePast())
       CLog::Log(LOGDEBUG, "CPythonInvoker(%d, %s): script termination took %dms", GetId(), m_sourceFile.c_str(), PYTHON_SCRIPT_TIMEOUT - timeout.MillisLeft());
@@ -492,8 +498,11 @@ bool CPythonInvoker::stop(bool abort)
     // everything which didn't exit by now gets killed
     {
       // grabbing the PyLock while holding the m_critical is asking for a deadlock
+      //pulseGlobalEvent();
       CSingleExit ex2(m_critical);
+      //pulseGlobalEvent();
       PyEval_AcquireLock();
+      //pulseGlobalEvent();
     }
 
     // Since we released the m_critical it's possible that the state is cleaned up
@@ -518,6 +527,8 @@ bool CPythonInvoker::stop(bool abort)
 
     lock.Leave();
     PyEval_ReleaseLock();
+    
+    printf("stop done\n");
   }
 
   return true;

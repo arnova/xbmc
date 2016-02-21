@@ -141,4 +141,7 @@
 #define GUI_MSG_EVENT_REMOVED      GUI_MSG_USER + 40
 
 // Send to RDS Radiotext handlers to inform about changed data
-#define GUI_MSG_UPDATE_RADIOTEXT      GUI_MSG_USER + 41
+#define GUI_MSG_UPDATE_RADIOTEXT   GUI_MSG_USER + 41
+
+// Send to stop the screensaver addon after we've switched back windows
+#define GUI_MSG_SCREENSAVER_KILL   GUI_MSG_USER + 42

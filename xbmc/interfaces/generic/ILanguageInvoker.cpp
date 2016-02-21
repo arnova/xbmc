@@ -43,6 +43,7 @@ bool ILanguageInvoker::Execute(const std::string &script, const std::vector<std:
 
 bool ILanguageInvoker::Stop(bool abort /* = false */)
 {
+  printf("invoker stop said abort=%i\n", abort);
   return stop(abort);
 }
 

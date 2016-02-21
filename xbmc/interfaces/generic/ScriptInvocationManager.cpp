@@ -109,6 +109,7 @@ void CScriptInvocationManager::Uninitialize()
   // CLanguageInvokerThread or the ILanguageInvoker implementation
   for (std::vector<LanguageInvokerThread>::iterator it = tempList.begin(); it != tempList.end(); ++it)
   {
+    printf("step 1\n");
     if (!it->done)
       it->thread->Stop(true);
   }
@@ -301,7 +302,7 @@ bool CScriptInvocationManager::Stop(int scriptId, bool wait /* = false */)
   CLanguageInvokerThreadPtr invokerThread = getInvokerThread(scriptId).thread;
   if (invokerThread == NULL)
     return false;
-
+  printf("Invo stop said wait= %i\n", wait);
   return invokerThread->Stop(wait);
 }
 
@@ -342,7 +343,7 @@ void CScriptInvocationManager::OnScriptEnded(int scriptId)
 {
   if (scriptId < 0)
     return;
-
+  printf("onscriptended\n");
   CSingleLock lock(m_critSection);
   LanguageInvokerThreadMap::iterator script = m_scripts.find(scriptId);
   if (script != m_scripts.end())
