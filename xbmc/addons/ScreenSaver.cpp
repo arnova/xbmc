@@ -21,13 +21,7 @@
 #include "guilib/GraphicContext.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
 #include "settings/Settings.h"
-#include "utils/AlarmClock.h"
 #include "windowing/WindowingFactory.h"
-
-// What sound does a python screensaver make?
-#define SCRIPT_ALARM "sssssscreensaver"
-
-#define SCRIPT_TIMEOUT 15 // seconds
 
 namespace ADDON
 {
@@ -46,9 +40,6 @@ bool CScreenSaver::CreateScreenSaver()
 {
   if (CScriptInvocationManager::GetInstance().HasLanguageInvoker(LibPath()))
   {
-    // Don't allow a previously-scheduled alarm to kill our new screensaver
-    g_alarmClock.Stop(SCRIPT_ALARM, true);
-
     if (!CScriptInvocationManager::GetInstance().Stop(LibPath()))
       CScriptInvocationManager::GetInstance().ExecuteAsync(LibPath(), AddonPtr(new CScreenSaver(*this)));
     return true;
@@ -102,11 +93,9 @@ void CScreenSaver::Destroy()
 #ifdef HAS_PYTHON
   if (URIUtils::HasExtension(LibPath(), ".py"))
   {
-    /* FIXME: This is a hack but a proper fix is non-trivial. Basically this code
-     * makes sure the addon gets terminated after we've moved out of the screensaver window.
-     * If we don't do this, we may simply lockup.
-     */
-    g_alarmClock.Start(SCRIPT_ALARM, SCRIPT_TIMEOUT, "StopScript(" + LibPath() + ")", true, false);
+    // FIXME: We need to move this out of here, we can only terminate if the window was changed
+    //g_alarmClock.Start(SCRIPT_ALARM, SCRIPT_TIMEOUT, "StopScript(" + LibPath() + ")", true, false);
+    CScriptInvocationManager::GetInstance().Stop(LibPath(), true);
     return;
   }
 #endif

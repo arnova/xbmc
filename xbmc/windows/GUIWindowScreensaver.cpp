@@ -1,4 +1,5 @@
 /*
+ *
  *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
@@ -37,6 +38,8 @@ CGUIWindowScreensaver::CGUIWindowScreensaver(void)
 
 CGUIWindowScreensaver::~CGUIWindowScreensaver(void)
 {
+  m_addon->Destroy();
+  m_addon.reset();
 }
 
 void CGUIWindowScreensaver::Process(unsigned int currentTime, CDirtyRegionList &regions)
@@ -112,8 +115,8 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
       {
         m_addon->Stop();
         g_graphicsContext.ApplyStateBlock();
-        m_addon->Destroy();
-        m_addon.reset();
+        //m_addon->Destroy();
+        //m_addon.reset();
       }
 #endif
       m_bInitialized = false;
