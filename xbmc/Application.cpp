@@ -3902,6 +3902,11 @@ bool CApplication::WakeUpScreenSaver(bool bPowerOffKeyPressed /* = false */)
         g_windowManager.PreviousWindow();  // show the previous window
       if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW)
         CApplicationMessenger::GetInstance().SendMsg(TMSG_GUI_ACTION, WINDOW_SLIDESHOW, -1, static_cast<void*>(new CAction(ACTION_STOP)));
+
+      CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0);
+      CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
+      if (pWindow)
+        pWindow->OnMessage(msg);
     }
     return true;
   }

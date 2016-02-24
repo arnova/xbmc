@@ -38,8 +38,6 @@ CGUIWindowScreensaver::CGUIWindowScreensaver(void)
 
 CGUIWindowScreensaver::~CGUIWindowScreensaver(void)
 {
-  m_addon->Destroy();
-  m_addon.reset();
 }
 
 void CGUIWindowScreensaver::Process(unsigned int currentTime, CDirtyRegionList &regions)
@@ -165,6 +163,19 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
     }
     g_application.m_iScreenSaveLock = 1;
     return true;
+  case GUI_MSG_SCREENSAVER_KILL:
+    {
+      CSingleLock lock (m_critSection);
+#ifdef HAS_SCREENSAVER
+      if (m_addon)
+      {
+        printf("destroy\n");
+        m_addon->Destroy();
+        m_addon.reset();
+      }
+#endif
+    }
+    break;
   }
   return CGUIWindow::OnMessage(message);
 }
