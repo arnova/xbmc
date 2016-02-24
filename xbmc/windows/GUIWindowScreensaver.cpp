@@ -32,7 +32,7 @@
 using namespace ADDON;
 
 CGUIWindowScreensaver::CGUIWindowScreensaver(void)
-    : CGUIWindow(WINDOW_SCREENSAVER, "")
+    : CGUIWindow(WINDOW_SCREENSAVER, ""), m_bDeInited(false)
 {
 }
 
@@ -118,6 +118,7 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
       }
 #endif
       m_bInitialized = false;
+      m_bDeInited = true;
 
       // remove z-buffer
 //      RESOLUTION res = g_graphicsContext.GetVideoResolution();
@@ -167,11 +168,12 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
     {
       CSingleLock lock (m_critSection);
 #ifdef HAS_SCREENSAVER
-      if (m_addon)
+      if (m_addon && m_bDeInited)
       {
         printf("destroy\n");
         m_addon->Destroy();
         m_addon.reset();
+        m_bDeInited = false;
       }
 #endif
     }

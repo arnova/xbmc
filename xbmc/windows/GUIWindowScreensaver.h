@@ -47,6 +47,7 @@ protected:
 
 private:
   bool m_bInitialized;
+  bool m_bDeInited;
   CCriticalSection m_critSection;
 #ifdef HAS_SCREENSAVER
   std::shared_ptr<ADDON::CScreenSaver> m_addon;
