@@ -95,7 +95,7 @@ void CScreenSaver::Destroy()
   {
     // FIXME: We need to move this out of here, we can only terminate if the window was changed
     //g_alarmClock.Start(SCRIPT_ALARM, SCRIPT_TIMEOUT, "StopScript(" + LibPath() + ")", true, false);
-    CScriptInvocationManager::GetInstance().Stop(LibPath(), true);
+    CScriptInvocationManager::GetInstance().Stop(LibPath(), false);
     return;
   }
 #endif
