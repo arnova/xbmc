@@ -28,6 +28,7 @@
 #include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
 #include "threads/SingleLock.h"
+#include "interfaces/generic/ScriptInvocationManager.h"
 
 using namespace ADDON;
 
@@ -170,10 +171,13 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
 #ifdef HAS_SCREENSAVER
       if (m_addon && m_bDeInited)
       {
-        printf("destroy\n");
-        m_addon->Destroy();
-        m_addon.reset();
-        m_bDeInited = false;
+        if (!CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath()))
+        {
+          printf("destroy %s\n", m_addon->LibPath().c_str());
+          m_addon->Destroy();
+          m_addon.reset();
+          m_bDeInited = false;
+        }
       }
 #endif
     }

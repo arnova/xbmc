@@ -342,7 +342,7 @@ void CScriptInvocationManager::OnScriptEnded(int scriptId)
 {
   if (scriptId < 0)
     return;
-
+  printf("onscriptended\n");
   CSingleLock lock(m_critSection);
   LanguageInvokerThreadMap::iterator script = m_scripts.find(scriptId);
   if (script != m_scripts.end())

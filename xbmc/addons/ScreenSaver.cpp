@@ -38,6 +38,7 @@ bool CScreenSaver::IsInUse() const
 
 bool CScreenSaver::CreateScreenSaver()
 {
+  printf("libname = %s\n", LibPath().c_str());
   if (CScriptInvocationManager::GetInstance().HasLanguageInvoker(LibPath()))
   {
     if (!CScriptInvocationManager::GetInstance().Stop(LibPath()))
