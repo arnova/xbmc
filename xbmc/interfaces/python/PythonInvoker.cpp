@@ -461,16 +461,19 @@ bool CPythonInvoker::stop(bool abort)
     m = PyImport_AddModule((char*)"xbmc");
     if (m == NULL || PyObject_SetAttrString(m, (char*)"abortRequested", PyBool_FromLong(1)))
       CLog::Log(LOGERROR, "CPythonInvoker(%d, %s): failed to set abortRequested", GetId(), m_sourceFile.c_str());
-
     PyThreadState_Swap(old);
     old = NULL;
     PyEval_ReleaseLock();
 
     XbmcThreads::EndTime timeout(PYTHON_SCRIPT_TIMEOUT);
+
     while (!m_stoppedEvent.WaitMSec(15))
     {
+      //pulseGlobalEvent();
       if (timeout.IsTimePast())
       {
+        printf("kill failed\n");
+        //while (1);
         CLog::Log(LOGERROR, "CPythonInvoker(%d, %s): script didn't stop in %d seconds - let's kill it", GetId(), m_sourceFile.c_str(), PYTHON_SCRIPT_TIMEOUT / 1000);
         break;
       }

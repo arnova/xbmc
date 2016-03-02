@@ -2790,6 +2790,11 @@ void CApplication::Stop(int exitCode)
 
     // Abort any active screensaver
     WakeUpScreenSaverAndDPMS();
+    // Make sure screensaver is really killed before unloading skin else we'll crash
+    CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0,1);
+    CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
+    if (pWindow)
+      pWindow->OnMessage(msg);
 
     SaveFileState(true);
 

@@ -404,6 +404,7 @@ namespace XBMCAddon
       bool ret = languageHook == NULL ? m_actionEvent.WaitMSec(milliseconds) : languageHook->WaitForEvent(m_actionEvent,milliseconds);
       if (ret)
         m_actionEvent.Reset();
+      printf("wait for action event %i\n", ret);
       return ret;
     }
 

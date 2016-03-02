@@ -115,7 +115,7 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
         m_addon->Stop();
         g_graphicsContext.ApplyStateBlock();
         //m_addon->Destroy();
-        //m_addon.reset();
+        m_addon.reset();
       }
 #endif
       m_bInitialized = false;
@@ -169,13 +169,12 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
     {
       CSingleLock lock (m_critSection);
 #ifdef HAS_SCREENSAVER
-      if (m_addon && m_bDeInited)
+      if (m_addon && (m_bDeInited || message.GetParam1() == 1))
       {
-        if (!CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath()))
+        if (!CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath()) || message.GetParam1() == 1)
         {
           printf("destroy %s\n", m_addon->LibPath().c_str());
           m_addon->Destroy();
-          m_addon.reset();
           m_bDeInited = false;
         }
       }

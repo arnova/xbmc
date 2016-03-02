@@ -301,7 +301,7 @@ bool CScriptInvocationManager::Stop(int scriptId, bool wait /* = false */)
   CLanguageInvokerThreadPtr invokerThread = getInvokerThread(scriptId).thread;
   if (invokerThread == NULL)
     return false;
-
+  printf("Invo stop said wait= %i\n", wait);
   return invokerThread->Stop(wait);
 }
 
