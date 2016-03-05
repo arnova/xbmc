@@ -404,7 +404,7 @@ namespace XBMCAddon
       bool ret = languageHook == NULL ? m_actionEvent.WaitMSec(milliseconds) : languageHook->WaitForEvent(m_actionEvent,milliseconds);
       if (ret)
         m_actionEvent.Reset();
-      printf("wait for action event %i\n", ret);
+      //printf("wait for action event %i\n", ret);
       return ret;
     }
 
@@ -682,6 +682,7 @@ namespace XBMCAddon
 
     void Window::doModal()
     {
+      printf("domodal\n");
       XBMC_TRACE;
       if (!existingWindow)
       {
@@ -704,6 +705,7 @@ namespace XBMCAddon
 //          }
           languageHook->MakePendingCalls(); // MakePendingCalls
 
+          //printf("still waiting start\n");
           bool stillWaiting;
           do
           {
@@ -713,6 +715,7 @@ namespace XBMCAddon
             }
             languageHook->MakePendingCalls();
           } while (stillWaiting);
+          //printf("still waiting done\n");
         }
       }
     }

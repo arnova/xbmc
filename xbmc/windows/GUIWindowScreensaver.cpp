@@ -114,7 +114,7 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
       {
         m_addon->Stop();
         g_graphicsContext.ApplyStateBlock();
-        //m_addon->Destroy();
+        //m_addon->Destroy(); // Remove this?
         m_addon.reset();
       }
 #endif
