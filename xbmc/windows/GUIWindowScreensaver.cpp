@@ -105,7 +105,7 @@ EVENT_RESULT CGUIWindowScreensaver::OnMouseEvent(const CPoint &point, const CMou
 bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
 {
   switch ( message.GetMessage() )
-  {
+  {        printf("is running done\n");
   case GUI_MSG_WINDOW_DEINIT:
     {
       CSingleLock lock (m_critSection);
@@ -114,12 +114,13 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
       {
         m_addon->Stop();
         g_graphicsContext.ApplyStateBlock();
-        //m_addon->Destroy(); // Remove this?
-        m_addon.reset();
+        //while (CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath())); // This will lockup
+        //m_addon->Destroy(); // Enabling this causes a long hang. Perhaps we need to puleseevent somewhere?
+        printf("destroy done\n");
       }
 #endif
       m_bInitialized = false;
-      m_bDeInited = true;
+      //m_bDeInited = true;
 
       // remove z-buffer
 //      RESOLUTION res = g_graphicsContext.GetVideoResolution();
@@ -134,8 +135,9 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
       CSingleLock lock (m_critSection);
 
 #ifdef HAS_SCREENSAVER
-      assert(!m_addon);
+      //assert(!m_addon);
       m_bInitialized = false;
+      m_bDeInited = false;
 
       m_addon.reset();
       // Setup new screensaver instance
@@ -169,15 +171,20 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
     {
       CSingleLock lock (m_critSection);
 #ifdef HAS_SCREENSAVER
+
       if (m_addon && (m_bDeInited || message.GetParam1() == 1))
       {
+        while (CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath())); // Test this
         if (!CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath()) || message.GetParam1() == 1)
         {
           printf("destroy %s\n", m_addon->LibPath().c_str());
           m_addon->Destroy();
+          m_addon.reset(); 
           m_bDeInited = false;
+          return true;
         }
       }
+      return false;
 #endif
     }
     break;

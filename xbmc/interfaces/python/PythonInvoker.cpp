@@ -471,7 +471,7 @@ bool CPythonInvoker::stop(bool abort)
     printf("kill start\n");
     while (!m_stoppedEvent.WaitMSec(15))
     {
-      pulseGlobalEvent();
+      //pulseGlobalEvent();
       if (timeout.IsTimePast())
       {
         printf("kill failed\n");
