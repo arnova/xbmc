@@ -3976,8 +3976,8 @@ void CApplication::CheckScreenSaverAndDPMS()
     ToggleDPMS(false);
     WakeUpScreenSaver();
   }
-  else if (maybeScreensaver
-           && elapsed > CSettings::GetInstance().GetInt(CSettings::SETTING_SCREENSAVER_TIME) * 60)
+  else /*if (maybeScreensaver
+           && elapsed > CSettings::GetInstance().GetInt(CSettings::SETTING_SCREENSAVER_TIME) * 60)*/
   {
     ActivateScreenSaver(); // Hackme
   }

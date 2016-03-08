@@ -120,7 +120,7 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
       }
 #endif
       m_bInitialized = false;
-      //m_bDeInited = true;
+      m_bDeInited = true;
 
       // remove z-buffer
 //      RESOLUTION res = g_graphicsContext.GetVideoResolution();
@@ -169,15 +169,15 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
     return true;
   case GUI_MSG_SCREENSAVER_KILL:
     {
-      CSingleLock lock (m_critSection);
+      CSingleLock lock(m_critSection);
 #ifdef HAS_SCREENSAVER
-
       if (m_addon && (m_bDeInited || message.GetParam1() == 1))
       {
+        printf("deinit\n");
         //while (CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath())); // Test this
         if (!CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath()) || message.GetParam1() == 1)
         {
-          printf("destroy %s\n", m_addon->LibPath().c_str());
+          printf("***** destroy %s\n", m_addon->LibPath().c_str());
           m_addon->Destroy();
           m_addon.reset(); 
           m_bDeInited = false;
