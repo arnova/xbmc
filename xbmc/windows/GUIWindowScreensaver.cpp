@@ -116,7 +116,7 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
         g_graphicsContext.ApplyStateBlock();
         //while (CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath())); // This will lockup
         //m_addon->Destroy(); // Enabling this causes a long hang. Perhaps we need to puleseevent somewhere?
-        printf("destroy done\n");
+        printf("guiwindowscreensaver stop done\n");
       }
 #endif
       m_bInitialized = false;
@@ -174,7 +174,7 @@ bool CGUIWindowScreensaver::OnMessage(CGUIMessage& message)
 
       if (m_addon && (m_bDeInited || message.GetParam1() == 1))
       {
-        while (CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath())); // Test this
+        //while (CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath())); // Test this
         if (!CScriptInvocationManager::GetInstance().IsRunning(m_addon->LibPath()) || message.GetParam1() == 1)
         {
           printf("destroy %s\n", m_addon->LibPath().c_str());

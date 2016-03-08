@@ -109,6 +109,7 @@ void CScriptInvocationManager::Uninitialize()
   // CLanguageInvokerThread or the ILanguageInvoker implementation
   for (std::vector<LanguageInvokerThread>::iterator it = tempList.begin(); it != tempList.end(); ++it)
   {
+    printf("step 1\n");
     if (!it->done)
       it->thread->Stop(true);
   }

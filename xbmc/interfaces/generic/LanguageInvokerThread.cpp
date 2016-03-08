@@ -55,6 +55,7 @@ bool CLanguageInvokerThread::execute(const std::string &script, const std::vecto
 
 bool CLanguageInvokerThread::stop(bool wait)
 {
+  printf("step 3\n");
   if (m_invoker == NULL)
     return false;
 
