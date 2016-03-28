@@ -1888,6 +1888,15 @@ void CApplication::Render()
   if (hasRendered)
   {
     g_infoManager.UpdateFPS();
+
+    // In case we're no longer in the screensaver window, kill the screensaver
+    if (g_windowManager.GetActiveWindow() != WINDOW_SCREENSAVER)
+    {
+      CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0);
+      CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
+      if (pWindow)
+        pWindow->OnMessage(msg);
+    }
   }
 
   m_pPlayer->AfterRender();
@@ -2790,7 +2799,7 @@ void CApplication::Stop(int exitCode)
 
     // Abort any active screensaver
     WakeUpScreenSaverAndDPMS();
-    // Make sure screensaver is really killed before unloading skin else we'll crash
+    // Make sure screensaver is really killed before unloading skin else we *possibly* crash
     CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0,1);
     CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
     if (pWindow)
@@ -4400,15 +4409,6 @@ void CApplication::Process()
 
   // update sound
   m_pPlayer->DoAudioWork();
-
-  // In case we're no longer in the screensaver window, kill the screensaver
-  if (g_windowManager.GetActiveWindow() != WINDOW_SCREENSAVER)
-  {
-    CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0);
-    CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
-    if (pWindow)
-      pWindow->OnMessage(msg);
-  }
 
   // do any processing that isn't needed on each run
   if( m_slowTimer.GetElapsedMilliseconds() > 500 )
