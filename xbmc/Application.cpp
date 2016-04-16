@@ -1907,22 +1907,12 @@ void CApplication::Render()
     g_graphicsContext.Flip(hasRendered);
 
   CTimeUtils::UpdateFrameTime(hasRendered);
-
-  // In case we're no longer in the screensaver window, kill the screensaver
-  if (g_windowManager.GetActiveWindow() != WINDOW_SCREENSAVER)
-  {
-    CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0);
-    CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
-    if (pWindow)
-      pWindow->OnMessage(msg);
-  }
 }
 
 void CApplication::SetStandAlone(bool value)
 {
   g_advancedSettings.m_handleMounting = m_bStandalone = value;
 }
-
 
 // OnAppCommand is called in response to a XBMC_APPCOMMAND event.
 // This needs to return true if it processed the appcommand or false if it didn't
@@ -2799,6 +2789,7 @@ void CApplication::Stop(int exitCode)
 
     // Abort any active screensaver
     WakeUpScreenSaverAndDPMS();
+
     // Make sure screensaver is really killed before unloading skin else we *possibly* crash
     CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0,1);
     CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
@@ -2869,13 +2860,13 @@ void CApplication::Stop(int exitCode)
 #if defined(TARGET_POSIX) && defined(HAS_FILESYSTEM_SMB)
     smb.Deinit();
 #endif
-
+/*
     // Make sure screensaver is really killed before unloading skin else we'll crash
     CGUIMessage msg(GUI_MSG_SCREENSAVER_KILL,0,0);
     CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
     if (pWindow)
       pWindow->OnMessage(msg);
-
+*/
 #if defined(TARGET_DARWIN_OSX)
     if (XBMCHelper::GetInstance().IsAlwaysOn() == false)
       XBMCHelper::GetInstance().Stop();
