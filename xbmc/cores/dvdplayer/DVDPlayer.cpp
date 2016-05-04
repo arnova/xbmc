@@ -1697,15 +1697,15 @@ bool CDVDPlayer::GetCachingTimes(double& level, double& delay, double& offset)
   if (!m_pInputStream->GetCacheStatus(&status))
     return false;
 
-  int64_t cached   = status.forward;
-  unsigned currate = status.currate;
-  unsigned maxrate = status.maxrate;
-  bool full        = status.full;
+  uint64_t &cached = status.forward;
+  unsigned &currate = status.currate;
+  unsigned &maxrate = status.maxrate;
+  float &cache_level = status.level;
 
   int64_t length  = m_pInputStream->GetLength();
   int64_t remain  = length - m_pInputStream->Seek(0, SEEK_CUR);
 
-  if(cached < 0 || length <= 0 || remain < 0)
+  if(length <= 0 || remain < 0)
     return false;
 
   double play_sbp  = DVD_MSEC_TO_TIME(m_pDemuxer->GetStreamLength()) / length;
@@ -1725,7 +1725,13 @@ bool CDVDPlayer::GetCachingTimes(double& level, double& delay, double& offset)
 
   delay = cache_left - play_left;
 
-  if (full && (currate < maxrate) )
+  /* NOTE: We can only reliably test for low readrate, when the cache is not
+   * already *near* full. This is because as soon as it's full the average-
+   * rate will become approximately the current-rate which can flag false
+   * low read-rate conditions. To work around this we don't check the currate at 100%
+   * but between 80% and 90%
+   */
+  if (cache_level > 0.8 && cache_level < 0.9 && currate < maxrate)
   {
     CLog::Log(LOGDEBUG, "Readrate %u is too low with %u required", currate, maxrate);
     level = -1.0;                          /* buffer is full & our read rate is too low  */
