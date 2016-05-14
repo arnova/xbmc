@@ -2053,7 +2053,6 @@ void CApplication::SetStandAlone(bool value)
   g_advancedSettings.m_handleMounting = m_bStandalone = value;
 }
 
-
 // OnAppCommand is called in response to a XBMC_APPCOMMAND event.
 // This needs to return true if it processed the appcommand or false if it didn't
 bool CApplication::OnAppCommand(const CAction &action)
@@ -2931,6 +2930,18 @@ void CApplication::Stop(int exitCode)
     // Abort any active screensaver
     WakeUpScreenSaverAndDPMS();
 
+    // Stop services before unloading Python
+    CAddonMgr::GetInstance().StopServices(false);
+
+    // unregister action listeners
+    UnregisterActionListener(&CSeekHandler::GetInstance());
+    UnregisterActionListener(&CPlayerController::GetInstance());
+
+    // stop all remaining scripts; must be done after skin has been unloaded,
+    // not before some windows still need it when deinitializing during skin
+    // unloading
+    CScriptInvocationManager::GetInstance().Uninitialize();
+
     SaveFileState(true);
 
     g_alarmClock.StopThread();
@@ -3012,18 +3023,6 @@ void CApplication::Stop(int exitCode)
 #endif
 
     g_mediaManager.Stop();
-
-    // Stop services before unloading Python
-    CAddonMgr::GetInstance().StopServices(false);
-
-    // unregister action listeners
-    UnregisterActionListener(&CSeekHandler::GetInstance());
-    UnregisterActionListener(&CPlayerController::GetInstance());
-
-    // stop all remaining scripts; must be done after skin has been unloaded,
-    // not before some windows still need it when deinitializing during skin
-    // unloading
-    CScriptInvocationManager::GetInstance().Uninitialize();
 
     g_Windowing.DestroyRenderSystem();
     g_Windowing.DestroyWindow();
@@ -4112,7 +4111,7 @@ void CApplication::CheckScreenSaverAndDPMS()
   else if (maybeScreensaver
            && elapsed > CSettings::GetInstance().GetInt(CSettings::SETTING_SCREENSAVER_TIME) * 60)
   {
-    ActivateScreenSaver();
+    ActivateScreenSaver(); // Hackme
   }
 }
 
