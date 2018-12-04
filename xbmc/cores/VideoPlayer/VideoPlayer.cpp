@@ -1919,6 +1919,9 @@ void CVideoPlayer::HandlePlaySpeed()
            (m_VideoPlayerVideo->IsStalled() && m_CurrentVideo.inited)) &&
           m_syncTimer.IsTimePast())
       {
+        // Pause subs when stalled
+        m_VideoPlayerSubtitle->Pause();
+
         if (m_pInputStream->IsRealtime())
         {
           if ((m_CurrentAudio.id >= 0 && m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_INSYNC &&
@@ -1958,23 +1961,29 @@ void CVideoPlayer::HandlePlaySpeed()
           }
         }
       }
-      // care for live streams
-      else if (m_pInputStream->IsRealtime())
+      else
       {
-        if (m_CurrentAudio.id >= 0)
+        // Resume subs when not stalled
+        m_VideoPlayerSubtitle->Resume();
+
+        // care for live streams
+        if (m_pInputStream->IsRealtime())
         {
-          double adjust = -1.0; // a unique value
-          if (m_clock.GetSpeedAdjust() >= 0 && m_VideoPlayerAudio->GetLevel() < 5)
-            adjust = -0.05;
-
-          if (m_clock.GetSpeedAdjust() < 0 && m_VideoPlayerAudio->GetLevel() > 10)
-            adjust = 0.0;
-
-          if (adjust != -1.0)
+          if (m_CurrentAudio.id >= 0)
           {
-            m_clock.SetSpeedAdjust(adjust);
-            if (m_omxplayer_mode)
-              m_OmxPlayerState.av_clock.OMXSetSpeedAdjust(adjust);
+            double adjust = -1.0; // a unique value
+            if (m_clock.GetSpeedAdjust() >= 0 && m_VideoPlayerAudio->GetLevel() < 5)
+              adjust = -0.05;
+
+            if (m_clock.GetSpeedAdjust() < 0 && m_VideoPlayerAudio->GetLevel() > 10)
+              adjust = 0.0;
+
+            if (adjust != -1.0)
+            {
+              m_clock.SetSpeedAdjust(adjust);
+              if (m_omxplayer_mode)
+                m_OmxPlayerState.av_clock.OMXSetSpeedAdjust(adjust);
+            }
           }
         }
       }

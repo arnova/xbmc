@@ -28,6 +28,8 @@ public:
   ~CVideoPlayerSubtitle() override;
 
   void Process(double pts, double offset);
+  void Pause() { m_paused = true; printf("paused\n"); };
+  void Resume() { m_paused = false; printf("unpaused\n"); };
   void Flush();
   void FindSubtitles(const char* strFilename);
   int GetSubtitleCount();
@@ -53,7 +55,7 @@ private:
 
   CDVDStreamInfo      m_streaminfo;
   double              m_lastPts;
-
+  bool                m_paused;
 
   CCriticalSection    m_section;
 };
