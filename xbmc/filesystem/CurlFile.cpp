@@ -1158,9 +1158,10 @@ ssize_t CCurlFile::Write(const void* lpBuf, size_t uiBufSize)
   return m_state->m_filePos;
 }
 
-bool CCurlFile::CReadState::ReadString(char *szLine, int iLineLength)
+bool CCurlFile::CReadState::ReadString(std::string& strLine, int iLineLength)
 {
   unsigned int want = (unsigned int)iLineLength;
+  strLine.clear();
 
   if((m_fileSize == 0 || m_filePos < m_fileSize) && FillBuffer(want) != FILLBUFFER_OK)
     return false;
@@ -1177,17 +1178,17 @@ bool CCurlFile::CReadState::ReadString(char *szLine, int iLineLength)
     return false;
   }
 
-  char* pLine = szLine;
+  char data;
   do
   {
-    if (!m_buffer.ReadData(pLine, 1))
+    if (!m_buffer.ReadData(data, 1))
       break;
 
-    pLine++;
-  } while (((pLine - 1)[0] != '\n') && ((unsigned int)(pLine - szLine) < want));
-  pLine[0] = 0;
-  m_filePos += (pLine - szLine);
-  return (pLine - szLine) > 0;
+    strLine += data;
+  } while (data != '\n' && (want == 0 || strLine.size() < want));
+
+  m_filePos += strLine.size();
+  return (strLine.size() > 0);
 }
 
 bool CCurlFile::ReOpen(const CURL& url)
