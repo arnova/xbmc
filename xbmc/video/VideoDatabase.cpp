@@ -129,7 +129,7 @@ void CVideoDatabase::CreateTables()
       "bool, exclude bool, allAudio bool, dateAdded text, idParentPath integer)");
 
   CLog::Log(LOGINFO, "create files table");
-  m_pDS->exec("CREATE TABLE files ( idFile integer primary key, idPath integer, strFilename text, playCount integer, lastPlayed text, dateAdded text)");
+  m_pDS->exec("CREATE TABLE files ( idFile integer primary key, idPath integer, strFilename text, playCount integer, lastPlayed text, dateAdded text, strHash text)");
 
   CLog::Log(LOGINFO, "create tvshow table");
   columns = "CREATE TABLE tvshow ( idShow integer primary key";
@@ -5695,11 +5695,14 @@ void CVideoDatabase::UpdateTables(int iVersion)
 
   if (iVersion < 119)
     m_pDS->exec("ALTER TABLE path ADD allAudio bool");
+
+  if (iVersion < 120)
+    m_pDS->exec("ALTER TABLE files ADD strHash text");
 }
 
 int CVideoDatabase::GetSchemaVersion() const
 {
-  return 119;
+  return 120;
 }
 
 bool CVideoDatabase::LookupByFolders(const std::string &path, bool shows)
