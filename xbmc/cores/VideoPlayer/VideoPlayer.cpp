@@ -378,6 +378,7 @@ bool CSelectionStreams::Get(StreamType type, StreamFlags flag, SelectionStream& 
 
 int CSelectionStreams::TypeIndexOf(StreamType type, int source, int64_t demuxerId, int id) const
 {
+  printf("tupeofindex id=%i source=%i demux=%i\n", id, source, demuxerId);
   if (id < 0)
     return -1;
 
@@ -418,12 +419,15 @@ void CSelectionStreams::Update(SelectionStream& s)
     SelectionStream& o = Get(s.type, index);
     s.type_index = o.type_index;
     o = s;
+    printf("index >0\n");
   }
   else
   {
     s.type_index = CountType(s.type);
     m_Streams.push_back(s);
+    printf("index counttype %i\n", s.type_index);
   }
+  printf("update with type=%i source=%i mux=%i id=%i\n", s.type, s.source, s.demuxerId, s.id);
 }
 
 void CSelectionStreams::Update(std::shared_ptr<CDVDInputStream> input, CDVDDemux* demuxer, std::string filename2)
@@ -485,6 +489,8 @@ void CSelectionStreams::Update(std::shared_ptr<CDVDInputStream> input, CDVDDemux
       s.height = info.height;
       s.codec = info.codecName;
       s.name = StringUtils::Format("%s %i", g_localizeStrings.Get(38032).c_str(), i);
+//      if (demuxer)
+//        s.demuxerId = stream->demuxerId;
       Update(s);
     }
   }
@@ -5071,6 +5077,7 @@ void CVideoPlayer::UpdateContentState()
                                                       m_CurrentAudio.demuxerId, m_CurrentAudio.id);
   m_content.m_subtitleIndex = m_SelectionStreams.TypeIndexOf(STREAM_SUBTITLE, m_CurrentSubtitle.source,
                                                          m_CurrentSubtitle.demuxerId, m_CurrentSubtitle.id);
+  printf("updatecontextstate source=%i videoindex=%i mux=%i id=%i\n", m_CurrentVideo.source, m_content.m_videoIndex, m_CurrentVideo.demuxerId, m_CurrentVideo.id);
 }
 
 void CVideoPlayer::GetVideoStreamInfo(int streamId, VideoStreamInfo &info)
