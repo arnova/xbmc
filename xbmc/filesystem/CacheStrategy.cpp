@@ -329,31 +329,28 @@ int64_t CDoubleCache::Seek(int64_t iFilePosition)
 
 bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway /* = false */)
 {
-  if (!clearAnyway && m_pCache->IsCachedPosition(iSourcePosition)
-      && (!m_pCacheOld || !m_pCacheOld->IsCachedPosition(iSourcePosition)
-          || m_pCache->CachedDataEndPos() >= m_pCacheOld->CachedDataEndPos()))
+  if (clearAnyway || !m_pCache->IsCachedPosition(iSourcePosition))
   {
-    return m_pCache->Reset(iSourcePosition, clearAnyway);
-  }
-
-  CCacheStrategy* pCacheTmp;
-  if (!m_pCacheOld)
-  {
-    pCacheTmp = m_pCache->CreateNew();
-    if (pCacheTmp->Open() != CACHE_RC_OK)
+    // Position not in active cache: swap caches
+    CCacheStrategy* pCacheTmp;
+    if (!m_pCacheOld)
     {
-      delete pCacheTmp;
-      return m_pCache->Reset(iSourcePosition, clearAnyway);
+      pCacheTmp = m_pCache->CreateNew();
+      if (pCacheTmp->Open() != CACHE_RC_OK)
+      {
+        delete pCacheTmp;
+        return m_pCache->Reset(iSourcePosition, clearAnyway);
+      }
     }
-  }
-  else
-  {
-    pCacheTmp = m_pCacheOld;
-  }
+    else
+    {
+      pCacheTmp = m_pCacheOld;
+    }
 
-  // Swap caches
-  m_pCacheOld = m_pCache;
-  m_pCache = pCacheTmp;
+    // Perform actual swap:
+    m_pCacheOld = m_pCache;
+    m_pCache = pCacheTmp;
+  }
 
   return m_pCache->Reset(iSourcePosition, clearAnyway);
 }
@@ -380,10 +377,7 @@ int64_t CDoubleCache::CachedDataEndPos()
 
 int64_t CDoubleCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
 {
-  int64_t ret = m_pCache->CachedDataEndPosIfSeekTo(iFilePosition);
-  if (m_pCacheOld)
-    return std::max(ret, m_pCacheOld->CachedDataEndPosIfSeekTo(iFilePosition));
-  return ret;
+  return m_pCache->CachedDataEndPosIfSeekTo(iFilePosition);
 }
 
 bool CDoubleCache::IsCachedPosition(int64_t iFilePosition)
