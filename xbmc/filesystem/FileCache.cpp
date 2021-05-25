@@ -254,6 +254,10 @@ void CFileCache::Process()
     if (m_seekEvent.WaitMSec(0))
     {
       m_seekEvent.Reset();
+
+      // Reset cache for new position (may swap caches as well when double cache is used)
+      bool bCompleteReset = m_pCache->Reset(m_seekPos, false);
+
       int64_t cacheMaxPos = m_pCache->CachedDataEndPosIfSeekTo(m_seekPos);
       const bool cacheReachEOF = (cacheMaxPos == m_fileSize);
       bool sourceSeekFailed = false;
@@ -268,23 +272,31 @@ void CFileCache::Process()
           sourceSeekFailed = true;
         }
       }
-      if (!sourceSeekFailed)
+
+      if (sourceSeekFailed)
       {
-        const bool bCompleteReset = m_pCache->Reset(m_seekPos, false);
+        // Seek failed: Reset cache to current source position
+        bCompleteReset = m_pCache->Reset(m_source.GetPosition(), false);
+      }
+      else
+      {
+        // Seek done: Update variables
         m_readPos = m_seekPos;
-        m_writePos = m_pCache->CachedDataEndPos();
-        assert(m_writePos == cacheMaxPos);
-        average.Reset(m_writePos, bCompleteReset); // Can only recalculate new average from scratch after a full reset (empty cache)
-        limiter.Reset(m_writePos);
         m_nSeekResult = m_seekPos;
-        if (bCompleteReset)
-        {
-          CLog::Log(LOGDEBUG,
-                    "CFileCache::{} - <{}> cache completely reset for seek to position {}",
-                    __FUNCTION__, m_sourcePath, m_seekPos);
-          m_bFilling = true;
-          m_bLowSpeedDetected = false;
-        }
+      }
+
+      m_writePos = m_pCache->CachedDataEndPos();
+      assert(m_writePos == cacheMaxPos);
+      average.Reset(
+          m_writePos,
+          bCompleteReset); // Can only recalculate new average from scratch after a full reset (empty cache)
+      limiter.Reset(m_writePos);
+      if (bCompleteReset)
+      {
+        CLog::Log(LOGDEBUG, "CFileCache::{} - <{}> cache completely reset for seek to position {}",
+                  __FUNCTION__, m_sourcePath, m_seekPos);
+        m_bFilling = true;
+        m_bLowSpeedDetected = false;
       }
 
       m_seekEnded.Set();
@@ -530,7 +542,7 @@ int64_t CFileCache::Seek(int64_t iFilePosition, int iWhence)
     if (m_seekPossible == 0)
       return m_nSeekResult;
 
-    /* never request closer to end than 2k, speeds up tag reading */
+    // Never request closer to end than one chunk. Speeds up tag reading
     m_seekPos = std::min(iTarget, std::max((int64_t)0, m_fileSize - m_chunkSize));
 
     m_seekEvent.Set();
