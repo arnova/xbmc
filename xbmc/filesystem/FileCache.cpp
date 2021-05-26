@@ -256,7 +256,7 @@ void CFileCache::Process()
       m_seekEvent.Reset();
 
       // Reset cache for new position (may swap caches as well when double cache is used)
-      bool bCompleteReset = m_pCache->Reset(m_seekPos, false);
+      bool bCompleteReset = m_pCache->Reset(m_seekPos);
 
       int64_t cacheMaxPos = m_pCache->CachedDataEndPosIfSeekTo(m_seekPos);
       const bool cacheReachEOF = (cacheMaxPos == m_fileSize);
@@ -276,7 +276,7 @@ void CFileCache::Process()
       if (sourceSeekFailed)
       {
         // Seek failed: Reset cache to current source position
-        bCompleteReset = m_pCache->Reset(m_source.GetPosition(), false);
+        bCompleteReset = m_pCache->Reset(m_source.GetPosition());
       }
       else
       {

@@ -43,7 +43,7 @@ public:
    \return Whether a full reset was performed, or not (e.g. only cache swap)
    \sa CCacheStrategy
    */
-  virtual bool Reset(int64_t iSourcePosition, bool clearAnyway=true) = 0;
+  virtual bool Reset(int64_t iSourcePosition, bool clearAnyway = false) = 0;
 
   virtual void EndOfInput(); // mark the end of the input stream so that Read will know when to return EOF
   virtual bool IsEndOfInput();
@@ -76,7 +76,7 @@ public:
   int64_t WaitForData(unsigned int iMinAvail, unsigned int iMillis) override;
 
   int64_t Seek(int64_t iFilePosition) override;
-  bool Reset(int64_t iSourcePosition, bool clearAnyway=true) override;
+  bool Reset(int64_t iSourcePosition, bool clearAnyway = false) override;
   void EndOfInput() override;
 
   int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition) override;
