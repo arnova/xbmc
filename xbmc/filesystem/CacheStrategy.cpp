@@ -221,7 +221,7 @@ int64_t CSimpleFileCache::Seek(int64_t iFilePosition)
   return iFilePosition;
 }
 
-bool CSimpleFileCache::Reset(int64_t iSourcePosition, bool clearAnyway)
+bool CSimpleFileCache::Reset(int64_t iSourcePosition, bool clearAnyway /* = false */)
 {
   if (!clearAnyway && IsCachedPosition(iSourcePosition))
   {
@@ -327,7 +327,7 @@ int64_t CDoubleCache::Seek(int64_t iFilePosition)
   return m_pCache->Seek(iFilePosition); // Normal seek
 }
 
-bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway)
+bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway /* = false */)
 {
   if (!clearAnyway && m_pCache->IsCachedPosition(iSourcePosition)
       && (!m_pCacheOld || !m_pCacheOld->IsCachedPosition(iSourcePosition)
