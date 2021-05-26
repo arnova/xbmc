@@ -335,24 +335,27 @@ bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway /* = false */
   {
     return m_pCache->Reset(iSourcePosition, clearAnyway);
   }
+
+  CCacheStrategy *pCacheTmp;
   if (!m_pCacheOld)
   {
-    CCacheStrategy *pCacheNew = m_pCache->CreateNew();
-    if (pCacheNew->Open() != CACHE_RC_OK)
+    pCacheTmp = m_pCache->CreateNew();
+    if (pCacheTmp->Open() != CACHE_RC_OK)
     {
-      delete pCacheNew;
+      delete pCacheTmp;
       return m_pCache->Reset(iSourcePosition, clearAnyway);
     }
-    bool bRes = pCacheNew->Reset(iSourcePosition, clearAnyway);
-    m_pCacheOld = m_pCache;
-    m_pCache = pCacheNew;
-    return bRes;
   }
-  bool bRes = m_pCacheOld->Reset(iSourcePosition, clearAnyway);
-  CCacheStrategy *tmp = m_pCacheOld;
+  else
+  {
+    pCacheTmp = m_pCacheOld;
+  }
+
+  // Swap caches
   m_pCacheOld = m_pCache;
-  m_pCache = tmp;
-  return bRes;
+  m_pCache = pCacheTmp;
+
+  return m_pCache->Reset(iSourcePosition, clearAnyway);
 }
 
 void CDoubleCache::EndOfInput()
