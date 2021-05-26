@@ -248,6 +248,11 @@ int64_t CSimpleFileCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
   return iFilePosition;
 }
 
+int64_t CSimpleFileCache::CachedDataStartPos()
+{
+  return m_nStartPosition;
+}
+
 int64_t CSimpleFileCache::CachedDataEndPos()
 {
   return m_nStartPosition + m_nWritePosition;
@@ -371,6 +376,11 @@ bool CDoubleCache::IsEndOfInput()
 void CDoubleCache::ClearEndOfInput()
 {
   m_pCache->ClearEndOfInput();
+}
+
+int64_t CDoubleCache::CachedDataStartPos()
+{
+  return m_pCache->CachedDataStartPos();
 }
 
 int64_t CDoubleCache::CachedDataEndPos()

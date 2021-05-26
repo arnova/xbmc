@@ -251,6 +251,11 @@ int64_t CCircularCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
   return iFilePosition;
 }
 
+int64_t CCircularCache::CachedDataStartPos()
+{
+  return m_beg;
+}
+
 int64_t CCircularCache::CachedDataEndPos()
 {
   return m_end;
