@@ -248,6 +248,11 @@ int64_t CSimpleFileCache::CachedDataEndPosIfSeekTo(int64_t iFilePosition)
   return iFilePosition;
 }
 
+int64_t CSimpleFileCache::CachedDataStartPos()
+{
+  return m_nStartPosition;
+}
+
 int64_t CSimpleFileCache::CachedDataEndPos()
 {
   return m_nStartPosition + m_nWritePosition;
@@ -350,6 +355,15 @@ bool CDoubleCache::Reset(int64_t iSourcePosition, bool clearAnyway /* = false */
     // Perform actual swap:
     m_pCacheOld = m_pCache;
     m_pCache = pCacheTmp;
+
+    // If new active cache still doesn't have this position, log it
+    if (!m_pCache->IsCachedPosition(iSourcePosition))
+    {
+      CLog::Log(LOGDEBUG, "CDoubleCache::{} - ({}) Cache miss for {} with new={}-{} and old={}-{}",
+                __FUNCTION__, fmt::ptr(this), iSourcePosition, m_pCache->CachedDataStartPos(),
+                m_pCache->CachedDataEndPos(), m_pCacheOld->CachedDataStartPos(),
+                m_pCacheOld->CachedDataEndPos());
+    }
   }
 
   return m_pCache->Reset(iSourcePosition, clearAnyway);
@@ -368,6 +382,11 @@ bool CDoubleCache::IsEndOfInput()
 void CDoubleCache::ClearEndOfInput()
 {
   m_pCache->ClearEndOfInput();
+}
+
+int64_t CDoubleCache::CachedDataStartPos()
+{
+  return m_pCache->CachedDataStartPos();
 }
 
 int64_t CDoubleCache::CachedDataEndPos()

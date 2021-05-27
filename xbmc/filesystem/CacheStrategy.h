@@ -50,6 +50,7 @@ public:
   virtual void ClearEndOfInput();
 
   virtual int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition) = 0;
+  virtual int64_t CachedDataStartPos() = 0;
   virtual int64_t CachedDataEndPos() = 0;
   virtual bool IsCachedPosition(int64_t iFilePosition) = 0;
 
@@ -80,6 +81,7 @@ public:
   void EndOfInput() override;
 
   int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition) override;
+  int64_t CachedDataStartPos() override;
   int64_t CachedDataEndPos() override;
   bool IsCachedPosition(int64_t iFilePosition) override;
 
@@ -117,6 +119,7 @@ public:
   void ClearEndOfInput() override;
 
   int64_t CachedDataEndPosIfSeekTo(int64_t iFilePosition) override;
+  int64_t CachedDataStartPos() override;
   int64_t CachedDataEndPos() override;
   bool IsCachedPosition(int64_t iFilePosition) override;
 
