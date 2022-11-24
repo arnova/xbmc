@@ -517,7 +517,7 @@ void CGUIDialogPVRTimerSettings::OnSettingAction(const std::shared_ptr<const CSe
       SetTimeFromSystemTime(m_startLocalTime, timerStartTime);
       m_timerStartTimeStr = m_startLocalTime.GetAsLocalizedTime("", false);
 
-      if (!m_timerType->SupportsEndTime())
+//      if (!m_timerType->SupportsEndTime())
       {
         m_endLocalTime = m_startLocalTime + timerSpan;
         m_timerEndTimeStr = m_endLocalTime.GetAsLocalizedTime("", false);
