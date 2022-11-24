@@ -511,18 +511,19 @@ void CGUIDialogPVRTimerSettings::OnSettingAction(const std::shared_ptr<const CSe
     m_startLocalTime.GetAsSystemTime(timerStartTime);
     if (CGUIDialogNumeric::ShowAndGetTime(timerStartTime, g_localizeStrings.Get(14066)))
     {
+      auto timerSpan = m_endLocalTime - m_startLocalTime;
+
       printf("timer begin done\n");
       SetTimeFromSystemTime(m_startLocalTime, timerStartTime);
       m_timerStartTimeStr = m_startLocalTime.GetAsLocalizedTime("", false);
 
-      if (m_timerType->SupportsStartTime())
-      {
-        printf("has start time\n");
-      }
-
       if (!m_timerType->SupportsEndTime())
       {
+        m_endLocalTime = m_startLocalTime + timerSpan;
+        m_timerEndTimeStr = m_endLocalTime.GetAsLocalizedTime("", false);
+
         printf("no end time\n");
+        printf("new start=%s new end=%s\n", m_timerStartTimeStr.c_str(), m_timerEndTimeStr.c_str());
       }
 
       SetButtonLabels();
