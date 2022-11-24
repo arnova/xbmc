@@ -506,12 +506,25 @@ void CGUIDialogPVRTimerSettings::OnSettingAction(const std::shared_ptr<const CSe
   const std::string& settingId = setting->GetId();
   if (settingId == SETTING_TMR_BEGIN)
   {
+    printf("timer begin\n");
     KODI::TIME::SystemTime timerStartTime;
     m_startLocalTime.GetAsSystemTime(timerStartTime);
     if (CGUIDialogNumeric::ShowAndGetTime(timerStartTime, g_localizeStrings.Get(14066)))
     {
+      printf("timer begin done\n");
       SetTimeFromSystemTime(m_startLocalTime, timerStartTime);
       m_timerStartTimeStr = m_startLocalTime.GetAsLocalizedTime("", false);
+
+      if (m_timerType->SupportsStartTime())
+      {
+        printf("has start time\n");
+      }
+
+      if (!m_timerType->SupportsEndTime())
+      {
+        printf("no end time\n");
+      }
+
       SetButtonLabels();
     }
   }
@@ -540,6 +553,10 @@ bool CGUIDialogPVRTimerSettings::Validate()
   if (!m_timerType->SupportsEndAnyTime() ||
       !m_timerType->IsEpgBased()) // End anytime toggle is not displayed
     bEndAnyTime = false; // Assume end time change needs checking for
+
+  printf("istimerrule=%i supportstart=%i supportsend=%i startany=%i endany=%i\n", m_timerType->IsTimerRule(), m_timerType->SupportsStartTime(), m_timerType->SupportsEndTime(), bStartAnyTime, bEndAnyTime);
+  printf("m_start=%s\n", m_startLocalTime.GetAsRFC1123DateTime().c_str());
+  printf("m_end=%s\n", m_endLocalTime.GetAsRFC1123DateTime().c_str());
 
   // Begin and end time
   if (!bStartAnyTime && !bEndAnyTime)
